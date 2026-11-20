@@ -1,381 +1,33 @@
-type RoleFilter = 'uda' | 'uni';
+import {
+  AmbassadorBio,
+  CohortPhoto,
+  PublicRegistrationStatusView,
+  RegistrationStatus,
+  RoleFilter,
+  SUMBAR_REGIONS,
+  UDA_PHOTOS,
+  UNI_PHOTOS,
+  YearLineup,
+  formatBytesCompact,
+  getCmsState,
+  getPublishedBoardMembers,
+  getPublishedCatalogYears,
+  getPublishedEvents,
+  hydrateCmsMediaUrls,
+  lookupRegistrationStatus,
+  resolveCmsImageUrl,
+  saveCompressedAdminImage,
+  saveRegistrationDocument,
+  submitRegistration2027,
+  subscribeCmsChange,
+} from './cmsStore';
+import {setupAdminPanel} from './adminPanel';
 
-interface AmbassadorBio {
-  role: 'uda' | 'uni';
-  slotIndex: number;
-  rankLabel: string;
-  fullName: string;
-  shortName: string;
-  titleBadge: string;
-  region: string;
-  education: string;
-  profession: string;
-  bio: string;
-  advocacy: string;
-  achievement: string;
+const DEFAULT_CATALOG_YEAR = '2024';
+
+function getCatalogLineups(): YearLineup[] {
+  return getPublishedCatalogYears();
 }
-
-interface CohortPhoto {
-  thumb: string;
-  full: string;
-}
-
-interface YearLineup {
-  year: string;
-  uda: AmbassadorBio[];
-  uni: AmbassadorBio[];
-}
-
-const UDA_PHOTOS: CohortPhoto[] = [
-  {
-    thumb: 'https://reel-ref-try-the-look.vercel.app/assets/model-1-640.webp',
-    full: 'https://reel-ref-try-the-look.vercel.app/assets/original-look-1.webp',
-  },
-  {
-    thumb: 'https://reel-ref-try-the-look.vercel.app/assets/model-5-640.webp',
-    full: 'https://reel-ref-try-the-look.vercel.app/assets/original-look-5.webp',
-  },
-  {
-    thumb: 'https://reel-ref-try-the-look.vercel.app/assets/model-4-640.webp',
-    full: 'https://reel-ref-try-the-look.vercel.app/assets/original-look-4.webp',
-  },
-  {
-    thumb: 'https://reel-ref-try-the-look.vercel.app/assets/model-6-640.webp',
-    full: 'https://reel-ref-try-the-look.vercel.app/assets/original-look-6.webp',
-  },
-  {
-    thumb: 'https://reel-ref-try-the-look.vercel.app/assets/model-3-640.webp',
-    full: 'https://reel-ref-try-the-look.vercel.app/assets/original-look-3.webp',
-  },
-  {
-    thumb: 'https://reel-ref-try-the-look.vercel.app/assets/model-2-640.webp',
-    full: 'https://reel-ref-try-the-look.vercel.app/assets/original-look-2.webp',
-  },
-];
-
-const UNI_PHOTOS: CohortPhoto[] = [
-  {
-    thumb: 'https://reel-ref-try-the-look.vercel.app/assets/model-2-640.webp',
-    full: 'https://reel-ref-try-the-look.vercel.app/assets/original-look-2.webp',
-  },
-  {
-    thumb: 'https://reel-ref-try-the-look.vercel.app/assets/model-3-640.webp',
-    full: 'https://reel-ref-try-the-look.vercel.app/assets/original-look-3.webp',
-  },
-  {
-    thumb: 'https://reel-ref-try-the-look.vercel.app/assets/model-6-640.webp',
-    full: 'https://reel-ref-try-the-look.vercel.app/assets/original-look-6.webp',
-  },
-  {
-    thumb: 'https://reel-ref-try-the-look.vercel.app/assets/model-4-640.webp',
-    full: 'https://reel-ref-try-the-look.vercel.app/assets/original-look-4.webp',
-  },
-  {
-    thumb: 'https://reel-ref-try-the-look.vercel.app/assets/model-5-640.webp',
-    full: 'https://reel-ref-try-the-look.vercel.app/assets/original-look-5.webp',
-  },
-  {
-    thumb: 'https://reel-ref-try-the-look.vercel.app/assets/model-1-640.webp',
-    full: 'https://reel-ref-try-the-look.vercel.app/assets/original-look-1.webp',
-  },
-];
-
-const RANK_LABELS = ['Utama', 'Wakil I', 'Wakil II', 'Intelegensia', 'Berbakat', 'Favorit'] as const;
-
-interface YearRawSeed {
-  year: string;
-  utamaUda: Omit<AmbassadorBio, 'slotIndex' | 'rankLabel'>;
-  utamaUni: Omit<AmbassadorBio, 'slotIndex' | 'rankLabel'>;
-  udaDelegates: [string, string, string, string, string][];
-  uniDelegates: [string, string, string, string, string][];
-}
-
-// Tuple: [fullNameWithTitle, shortName, region, education, focus]
-const RAW_YEARS: YearRawSeed[] = [
-  {
-    year: '2025',
-    utamaUda: {
-      role: 'uda',
-      fullName: 'Uda Riky Pratama, S.T.',
-      shortName: 'Uda Riky Pratama',
-      titleBadge: 'Uda Duta Wisata Sumbar 2025',
-      region: 'Kota Bukittinggi',
-      education: 'Sarjana Teknik Sipil — Universitas Andalas',
-      profession: 'Pegiat Wisata Sejarah & Fotografer Dokumenter',
-      bio: 'Lahir dan besar di jantung kota wisata Bukittinggi, Uda Riky aktif memetakan rute jalan kaki sejarah di kawasan Jam Gadang, Lobang Japang, hingga Ngarai Sianok serta mengangkat kisah heritage daerah kepada generasi muda.',
-      advocacy: 'Revitalisasi Wisata Heritage & Digital Storytelling Destinasi',
-      achievement: 'Terpilih Uda Sumatera Barat 2025 · Duta Pemuda Kreatif Kota Bukittinggi',
-    },
-    utamaUni: {
-      role: 'uni',
-      fullName: 'Uni Mutiara Az-Zahra, S.Ars.',
-      shortName: 'Uni Mutiara Az-Zahra',
-      titleBadge: 'Uni Duta Wisata Sumbar 2025',
-      region: 'Kab. Tanah Datar',
-      education: 'Sarjana Arsitektur — Institut Teknologi Bandung',
-      profession: 'Peneliti Muda Arsitektur Vernakular Minangkabau',
-      bio: 'Tumbuh di lingkungan adat Luhak Nan Tuo, Uni Mutiara mendampingi nagari-nagari wisata di Tanah Datar dalam merancang penginapan budaya yang tetap mempertahankan ukiran dan tata ruang Rumah Gadang.',
-      advocacy: 'Wisata Nagari Adat & Pelestarian Arsitektur Rumah Gadang',
-      achievement: 'Terpilih Uni Sumatera Barat 2025 · Finalis Desain Ruang Publik Budaya Sumatera',
-    },
-    udaDelegates: [
-      ['Uda Zaki Al-Ghifari, S.E.', 'Uda Zaki Al-Ghifari', 'Kota Padang', 'Sarjana Ekonomi — Universitas Negeri Padang', 'Pengembangan Wisata Bahari & Ekosistem Pantai Barat'],
-      ['Uda Bima Adriansyah, S.I.Kom.', 'Uda Bima Adriansyah', 'Kota Payakumbuh', 'Sarjana Ilmu Komunikasi — Universitas Andalas', 'Branding Kuliner Rendang & Pasar Tradisional Digital'],
-      ['Uda Naufal Hakim, S.H.', 'Uda Naufal Hakim', 'Kab. Agam', 'Sarjana Hukum — Universitas Andalas', 'Tata Kelola Geopark Ngarai Sianok–Maninjau'],
-      ['Uda Ilham Kurnia, S.Sn.', 'Uda Ilham Kurnia', 'Kota Padang Panjang', 'Sarjana Seni — ISI Padang Panjang', 'Pelestarian Seni Pertunjukan Randai & Musik Talempong'],
-      ['Uda Aditya Ramadhan, S.Par.', 'Uda Aditya Ramadhan', 'Kab. Pesisir Selatan', 'Sarjana Pariwisata — Politeknik Negeri Padang', 'Promosi Ekowisata Kawasan Bahari Terpadu Mandeh'],
-    ],
-    uniDelegates: [
-      ['Uni Nadya Chairunnisa, S.Ked.', 'Uni Nadya Chairunnisa', 'Kota Padang', 'Sarjana Kedokteran — Universitas Andalas', 'Standar Wisata Kesehatan & Sanitasi Kawasan Kuliner'],
-      ['Uni Alya Salsabila, S.Pd.', 'Uni Alya Salsabila', 'Kota Bukittinggi', 'Sarjana Pendidikan Bahasa — Universitas Negeri Padang', 'Pemandu Wisata Multilingual & Edukasi Sejarah Minangkabau'],
-      ['Uni Tari Kusuma, S.Ds.', 'Uni Tari Kusuma', 'Kab. Lima Puluh Kota', 'Sarjana Desain — ISI Padang Panjang', 'Pengembangan Kemasan Kriya & Geopark Lembah Harau'],
-      ['Uni Raisha Permata, S.Sos.', 'Uni Raisha Permata', 'Kota Pariaman', 'Sarjana Sosiologi — Universitas Andalas', 'Promosi Festival Budaya Pesona Hoyak Tabuik'],
-      ['Uni Shafira Amalia, S.P.', 'Uni Shafira Amalia', 'Kab. Solok', 'Sarjana Pertanian — Universitas Andalas', 'Agrowisata Dataran Tinggi Alahan Panjang & Kopi Solok'],
-    ],
-  },
-  {
-    year: '2024',
-    utamaUda: {
-      role: 'uda',
-      fullName: 'Uda Fikri Ramadhan, S.E.',
-      shortName: 'Uda Fikri Ramadhan',
-      titleBadge: 'Uda Duta Wisata Sumbar 2024',
-      region: 'Kota Sawahlunto',
-      education: 'Sarjana Ekonomi — Universitas Negeri Padang',
-      profession: 'Pengelola Ekonomi Kreatif & Wisata Warisan Tambang',
-      bio: 'Berasal dari Kota Sawahlunto yang masuk daftar Warisan Dunia UNESCO, Uda Fikri mengintegrasikan narasi sejarah pertambangan dengan pemberdayaan pelaku UMKM kuliner dan kriya lokal agar berdampak langsung ke ekonomi warga.',
-      advocacy: 'Pemberdayaan Ekonomi Kreatif Desa Wisata & UNESCO Heritage Tour',
-      achievement: 'Uda Sumatera Barat 2024 · Penggerak Pokdarwis Terbaik Regional Timur',
-    },
-    utamaUni: {
-      role: 'uni',
-      fullName: 'Uni Zahra Putri Andini, S.I.Kom.',
-      shortName: 'Uni Zahra Putri Andini',
-      titleBadge: 'Uni Duta Wisata Sumbar 2024',
-      region: 'Kab. Pesisir Selatan',
-      education: 'Sarjana Ilmu Komunikasi — Universitas Padjadjaran',
-      profession: 'Jurnalis Pariwisata Bahari & Pembawa Acara Dwibahasa',
-      bio: 'Uni Zahra mengampanyekan pelestarian ekosistem terumbu karang dan wisata bahari berkelanjutan di Kawasan Mandeh serta Pantai Carocok, sembari memperkenalkan destinasi pesisir selatan di berbagai forum internasional.',
-      advocacy: 'Ekowisata Bahari Kawasan Mandeh & Literasi Pariwisata Hijau',
-      achievement: 'Uni Sumatera Barat 2024 · Duta Bahasa & Komunikasi Publik Sumatera Barat',
-    },
-    udaDelegates: [
-      ['Uda Dimas Wahyudi, S.T.', 'Uda Dimas Wahyudi', 'Kota Solok', 'Sarjana Teknik — Universitas Andalas', 'Revitalisasi Jalur Wisata Kuliner & Sawah Solok'],
-      ['Uda Rayhan Akbar, S.IP.', 'Uda Rayhan Akbar', 'Kab. Tanah Datar', 'Sarjana Ilmu Politik — Universitas Gadjah Mada', 'Diplomasi Adat Pagaruyung & Desa Adat Pandai Sikek'],
-      ['Uda Kevin Mahendra, S.Kom.', 'Uda Kevin Mahendra', 'Kota Padang', 'Sarjana Informatika — Universitas Putra Indonesia', 'Digitalisasi Peta Destinasi & Virtual Tour Museum Adityawarman'],
-      ['Uda Arif Budiman, S.Sn.', 'Uda Arif Budiman', 'Kab. Sijunjung', 'Sarjana Seni — ISI Padang Panjang', 'Dokumentasi Perkampungan Adat Matrilineal Sijunjung'],
-      ['Uda Yogi Saputra, S.Kel.', 'Uda Yogi Saputra', 'Kab. Kep. Mentawai', 'Sarjana Ilmu Kelautan — Universitas Bung Hatta', 'Konservasi Budaya Sikerei & Wisata Selancar Berkelanjutan'],
-    ],
-    uniDelegates: [
-      ['Uni Tiara Maulida, S.E.', 'Uni Tiara Maulida', 'Kota Sawahlunto', 'Sarjana Ekonomi — Universitas Negeri Padang', 'Promosi Tenun Songket Silungkang & Museum Kereta Api'],
-      ['Uni Cantika Lestari, S.Psi.', 'Uni Cantika Lestari', 'Kota Payakumbuh', 'Sarjana Psikologi — Universitas Andalas', 'Pelatihan Keramahtamahan Pelayanan Desa Wisata'],
-      ['Uni Keisha Maharani, S.Ars.', 'Uni Keisha Maharani', 'Kab. Solok Selatan', 'Sarjana Arsitektur — Universitas Bung Hatta', 'Pelestarian Kawasan Saribu Rumah Gadang Muara Labuh'],
-      ['Uni Diva Anggraini, S.Pd.', 'Uni Diva Anggraini', 'Kab. Dharmasraya', 'Sarjana Pendidikan — Universitas Negeri Padang', 'Edukasi Sejarah Candi Padang Roco & Sungai Batanghari'],
-      ['Uni Najwa Salsabila, S.Gz.', 'Uni Najwa Salsabila', 'Kab. Padang Pariaman', 'Sarjana Ilmu Gizi — Universitas Andalas', 'Pemberdayaan Wisata Kuliner Sala Lauak & Pesisir Tiram'],
-    ],
-  },
-  {
-    year: '2023',
-    utamaUda: {
-      role: 'uda',
-      fullName: 'Uda Farhan Maulana, S.H.',
-      shortName: 'Uda Farhan Maulana',
-      titleBadge: 'Uda Duta Wisata Sumbar 2023',
-      region: 'Kota Padang',
-      education: 'Sarjana Hukum — Universitas Andalas',
-      profession: 'Konsultan Tata Kelola Pariwisata & Narator Budaya',
-      bio: 'Fokus pada penguatan standar pariwisata ramah muslim serta pendampingan perlindungan hak kekayaan intelektual komunal bagi seni pertunjukan randai dan kriya tradisional Minangkabau.',
-      advocacy: 'Tata Kelola Wisata Ramah Muslim & Diplomasi Budaya Maritim',
-      achievement: 'Uda Sumatera Barat 2023 · Delegasi Forum Pemuda Pariwisata ASEAN',
-    },
-    utamaUni: {
-      role: 'uni',
-      fullName: 'Uni Aulia Rahma, S.Pd.',
-      shortName: 'Uni Aulia Rahma',
-      titleBadge: 'Uni Duta Wisata Sumbar 2023',
-      region: 'Kab. Agam',
-      education: 'Sarjana Pendidikan Bahasa Inggris — Universitas Negeri Padang',
-      profession: 'Edukator Wisata Alam & Pendamping Komunitas Nagari',
-      bio: 'Menghubungkan kawasan wisata alam Danau Maninjau, Kelok 44, dan Puncak Lawang dengan pelatihan komunikasi bahasa Inggris praktis bagi pemandu lokal dan pengrajin perak Koto Gadang.',
-      advocacy: 'Edukasi Bahasa Asing Pelaku Wisata & Konservasi Danau Maninjau',
-      achievement: 'Uni Sumatera Barat 2023 · Pemenang Kategori Intelegensia',
-    },
-    udaDelegates: [
-      ['Uda Rizky Fadillah, S.E.', 'Uda Rizky Fadillah', 'Kota Bukittinggi', 'Sarjana Ekonomi — Universitas Andalas', 'Revitalisasi Ekonomi Kreatif Pengrajin Sulam Kapau'],
-      ['Uda Haris Pratama, S.T.', 'Uda Haris Pratama', 'Kab. Pasaman', 'Sarjana Teknik — Universitas Negeri Padang', 'Kampanye Ekowisata Garis Khatulistiwa Bonjol'],
-      ['Uda Alif Nizar, S.Sos.', 'Uda Alif Nizar', 'Kab. Pasaman Barat', 'Sarjana Sosiologi — Universitas Andalas', 'Promosi Geowisata Gunung Talamau & Pantai Air Bangis'],
-      ['Uda Teguh Santoso, S.Sn.', 'Uda Teguh Santoso', 'Kota Pariaman', 'Sarjana Seni — ISI Padang Panjang', 'Pengembangan Seni Gandang Tambua & Festival Pantai'],
-      ['Uda Bagas Prayoga, S.Hut.', 'Uda Bagas Prayoga', 'Kab. Solok', 'Sarjana Kehutanan — Universitas Andalas', 'Pelestarian Rimba Raya & Jalur Pendakian Gunung Talang'],
-    ],
-    uniDelegates: [
-      ['Uni Intan Purnama, S.I.Kom.', 'Uni Intan Purnama', 'Kota Padang', 'Sarjana Ilmu Komunikasi — Universitas Andalas', 'Kampanye Kota Tua Padang & Wisata Kuliner Muaro'],
-      ['Uni Melati Putri, S.E.', 'Uni Melati Putri', 'Kab. Tanah Datar', 'Sarjana Ekonomi — UIN Mahmud Yunus', 'Pemberdayaan Penenun Songket Balapak Nagari Sungayang'],
-      ['Uni Firda Anisa, S.Hum.', 'Uni Firda Anisa', 'Kota Padang Panjang', 'Sarjana Sastra — Universitas Andalas', 'Pelestarian Kaba & Literasi Sejarah Minangkabau'],
-      ['Uni Sinta Amelia, S.Par.', 'Uni Sinta Amelia', 'Kab. Pesisir Selatan', 'Sarjana Pariwisata — Politeknik Negeri Padang', 'Pengembangan Homestay Berbasis Kearifan Lokal'],
-      ['Uni Nadia Humaira, S.Ked.', 'Uni Nadia Humaira', 'Kota Bukittinggi', 'Sarjana Kedokteran — Universitas Andalas', 'Edukasi Wisata Sehat & Kesiapsiagaan Bencana Alam'],
-    ],
-  },
-  {
-    year: '2022',
-    utamaUda: {
-      role: 'uda',
-      fullName: 'Uda Hafiz Al-Faruq, M.Par.',
-      shortName: 'Uda Hafiz Al-Faruq',
-      titleBadge: 'Uda Duta Wisata Sumbar 2022',
-      region: 'Kab. Pesisir Selatan',
-      education: 'Magister Pariwisata — STP Bandung',
-      profession: 'Perencana Destinasi Berkelanjutan',
-      bio: 'Sebagai peneliti muda kepariwisataan, Uda Hafiz mendampingi pengembangan jalur jelajah alam Bukit Langkisau dan air terjun berbasis standar keselamatan wisata serta konservasi hutan lindung.',
-      advocacy: 'Perencanaan Destinasi Berkelanjutan & Wisata Petualangan Aman',
-      achievement: 'Uda Sumatera Barat 2022 · Kontributor Pedoman Ekowisata Sumatera Barat',
-    },
-    utamaUni: {
-      role: 'uni',
-      fullName: 'Uni Nabila Khairunnisa, S.Ked.',
-      shortName: 'Uni Nabila Khairunnisa',
-      titleBadge: 'Uni Duta Wisata Sumbar 2022',
-      region: 'Kota Padang',
-      education: 'Sarjana Kedokteran — Universitas Andalas',
-      profession: 'Inisiator Wisata Kebugaran & Gastronomi Higienis',
-      bio: 'Memadukan perspektif kesehatan dengan kekayaan kuliner Minangkabau, Uni Nabila mengedukasi pengelola kawasan kuliner pesisir Padang tentang standar higienitas pangan serta kesiapsiagaan medis wisata alam.',
-      advocacy: 'Wisata Kebugaran, Higienitas Kuliner Tradisional & Edukasi Publik',
-      achievement: 'Uni Sumatera Barat 2022 · Duta Gizi & Pariwisata Sehat Kota Padang',
-    },
-    udaDelegates: [
-      ['Uda Fadil Rahman, S.T.', 'Uda Fadil Rahman', 'Kab. Lima Puluh Kota', 'Sarjana Teknik — Universitas Andalas', 'Pengembangan Wisata Panjat Tebing & Alam Lembah Harau'],
-      ['Uda Gilang Permana, S.E.', 'Uda Gilang Permana', 'Kota Payakumbuh', 'Sarjana Ekonomi — Universitas Negeri Padang', 'Pemasaran Digital Produk UMKM Tenun Kubang'],
-      ['Uda Yusuf Maulana, S.IP.', 'Uda Yusuf Maulana', 'Kota Sawahlunto', 'Sarjana Ilmu Politik — Universitas Andalas', 'Komunikasi Publik Warisan Budaya Ombilin Sawahlunto'],
-      ['Uda Rahmat Hidayat, S.Pd.', 'Uda Rahmat Hidayat', 'Kab. Padang Pariaman', 'Sarjana Pendidikan — Universitas Negeri Padang', 'Edukasi Wisata Religi Surau Tua & Makam Syekh Burhanuddin'],
-      ['Uda Andre Kurnia, S.Sn.', 'Uda Andre Kurnia', 'Kab. Solok Selatan', 'Sarjana Seni — ISI Padang Panjang', 'Atraksi Seni Tari Piring & Adat Alam Surambi Sungai Pagu'],
-    ],
-    uniDelegates: [
-      ['Uni Hanna Azzahra, S.Ars.', 'Uni Hanna Azzahra', 'Kota Bukittinggi', 'Sarjana Arsitektur — Universitas Bung Hatta', 'Konservasi Bangunan Kolonial & Kawasan Benteng Fort de Kock'],
-      ['Uni Rania Oktavia, S.I.Kom.', 'Uni Rania Oktavia', 'Kab. Agam', 'Sarjana Ilmu Komunikasi — Universitas Andalas', 'Promosi Kerajinan Perak Koto Gadang ke Pasar Nasional'],
-      ['Uni Clarissa Amanda, S.H.', 'Uni Clarissa Amanda', 'Kota Solok', 'Sarjana Hukum — Universitas Andalas', 'Perlindungan Indikasi Geografis Beras Bareh Solok'],
-      ['Uni Yuliana Fitri, S.Sos.', 'Uni Yuliana Fitri', 'Kab. Sijunjung', 'Sarjana Sosiologi — Universitas Negeri Padang', 'Pemberdayaan Kelompok Perempuan Desa Adat Padang Ranah'],
-      ['Uni Marsha Puspita, S.Par.', 'Uni Marsha Puspita', 'Kab. Kep. Mentawai', 'Sarjana Pariwisata — Politeknik Negeri Padang', 'Ekowisata Hutan Adat & Edukasi Budaya Kepulauan Mentawai'],
-    ],
-  },
-  {
-    year: '2021',
-    utamaUda: {
-      role: 'uda',
-      fullName: 'Uda Iqbal Hakim, S.Sos.',
-      shortName: 'Uda Iqbal Hakim',
-      titleBadge: 'Uda Duta Wisata Sumbar 2021',
-      region: 'Kab. Agam',
-      education: 'Sarjana Sosiologi — Universitas Indonesia',
-      profession: 'Penggiat Adat Salingka Nagari & Silek Tradisi',
-      bio: 'Aktif merawat tradisi lisan, silek tuo, dan seni kaba Minangkabau sebagai daya tarik wisata budaya autentik dengan membina sanggar-sanggar muda di berbagai nagari di Kabupaten Agam.',
-      advocacy: 'Wisata Budaya Berbasis Sanggar & Pelestarian Silek Tradisional',
-      achievement: 'Uda Sumatera Barat 2021 · Penampil Kehormatan Festival Budaya Nusantara',
-    },
-    utamaUni: {
-      role: 'uni',
-      fullName: 'Uni Salsabila Fitri, S.Ds.',
-      shortName: 'Uni Salsabila Fitri',
-      titleBadge: 'Uni Duta Wisata Sumbar 2021',
-      region: 'Kota Padang Panjang',
-      education: 'Sarjana Desain Produk — ISI Padang Panjang',
-      profession: 'Kurator Arsip Kriya & Desainer Produk Budaya',
-      bio: 'Tumbuh di kota seni Padang Panjang, Uni Salsabila menginisiasi pendokumentasian digital ratusan motif tenun klasik Sumatera Barat guna mempercepat regenerasi pengrajin muda.',
-      advocacy: 'Pengarsipan Digital Motif Wastra & Regenerasi Perajin Muda',
-      achievement: 'Uni Sumatera Barat 2021 · Kurator Pameran Seni Budaya Muda Sumatera',
-    },
-    udaDelegates: [
-      ['Uda Ilfan Zulfikar, S.E.', 'Uda Ilfan Zulfikar', 'Kota Padang', 'Sarjana Ekonomi — Universitas Andalas', 'Pemulihan Ekonomi Kreatif Pariwisata Pascapandemi'],
-      ['Uda Daffa Pratama, S.Kom.', 'Uda Daffa Pratama', 'Kab. Tanah Datar', 'Sarjana Sistem Informasi — Universitas Andalas', 'Platform Pemesanan Tiket & Panduan Digital Istano Basa'],
-      ['Uda Satria Wibowo, S.T.', 'Uda Satria Wibowo', 'Kab. Dharmasraya', 'Sarjana Teknik — Universitas Negeri Padang', 'Pengembangan Akses Wisata Sungai & Cagar Sejarah Dharmasraya'],
-      ['Uda Taufik Hidayat, S.Pd.', 'Uda Taufik Hidayat', 'Kota Pariaman', 'Sarjana Pendidikan — Universitas Negeri Padang', 'Program Konservasi Penyu Pantai Gondoriah'],
-      ['Uda Reza Alamsyah, S.IP.', 'Uda Reza Alamsyah', 'Kota Bukittinggi', 'Sarjana Ilmu Politik — Universitas Andalas', 'Forum Kepemudaan Duta Wisata Lintas Sumatera'],
-    ],
-    uniDelegates: [
-      ['Uni Latifa Azmi, S.Farm.', 'Uni Latifa Azmi', 'Kab. Pasaman', 'Sarjana Farmasi — Universitas Andalas', 'Pengembangan Produk Minyak Atsiri & Herbal Wisata Alam'],
-      ['Uni Dinda Kartika, S.I.Kom.', 'Uni Dinda Kartika', 'Kab. Pasaman Barat', 'Sarjana Komunikasi — Universitas Negeri Padang', 'Narasi Digital Keberagaman Budaya Pesisir Utara Sumbar'],
-      ['Uni Sofia Rahmawati, S.Sn.', 'Uni Sofia Rahmawati', 'Kota Sawahlunto', 'Sarjana Seni — ISI Padang Panjang', 'Festival Tari Tradisional & Galeri Kriya Batu Bara'],
-      ['Uni Vania Pratiwi, S.E.', 'Uni Vania Pratiwi', 'Kab. Pesisir Selatan', 'Sarjana Ekonomi — Universitas Andalas', 'Penguatan Manajemen Keuangan Kelompok Sadar Wisata'],
-      ['Uni Gita Larasati, S.Hum.', 'Uni Gita Larasati', 'Kota Payakumbuh', 'Sarjana Sastra — Universitas Andalas', 'Literasi Kuliner Tradisional & Dokumentasi Resep Nagari'],
-    ],
-  },
-  {
-    year: '2020',
-    utamaUda: {
-      role: 'uda',
-      fullName: 'Uda Reza Kurniawan, S.IP.',
-      shortName: 'Uda Reza Kurniawan',
-      titleBadge: 'Uda Duta Wisata Sumbar 2020',
-      region: 'Kota Payakumbuh',
-      education: 'Sarjana Ilmu Politik — Universitas Gadjah Mada',
-      profession: 'Praktisi Diplomasi Daerah & Promotor Wisata Gastronomi',
-      bio: 'Berasal dari sentra rendang Kota Payakumbuh, Uda Reza konsisten mempromosikan wisata kuliner Minangkabau pada forum budaya nasional hingga misi promosi luar negeri.',
-      advocacy: 'Diplomasi Gastronomi Rendang & Festival Kuliner Tradisional',
-      achievement: 'Uda Sumatera Barat 2020 · Duta Kuliner Nusantara Tingkat Nasional',
-    },
-    utamaUni: {
-      role: 'uni',
-      fullName: 'Uni Putri Maharani, S.Psi.',
-      shortName: 'Uni Putri Maharani',
-      titleBadge: 'Uni Duta Wisata Sumbar 2020',
-      region: 'Kab. Lima Puluh Kota',
-      education: 'Sarjana Psikologi — Universitas Negeri Padang',
-      profession: 'Fasilitator Komunitas Geopark Lembah Harau',
-      bio: 'Berperan aktif membangun keramahtamahan pariwisata berbasis komunitas di kawasan Lembah Harau dan Kelok 9 serta merancang program eduwisata alam bagi pelajar.',
-      advocacy: 'Peningkatan Hospitality Desa Wisata & Eduwisata Lembah Harau',
-      achievement: 'Uni Sumatera Barat 2020 · Inisiator Program Sahabat Wisata Lembah Harau',
-    },
-    udaDelegates: [
-      ['Uda Arga Wijaya, S.T.', 'Uda Arga Wijaya', 'Kota Padang', 'Sarjana Teknik — Universitas Andalas', 'Penataan Zona Wisata Ramah Pejalan Kaki Pesisir Padang'],
-      ['Uda Fajar Nugroho, S.E.', 'Uda Fajar Nugroho', 'Kab. Solok', 'Sarjana Ekonomi — Universitas Negeri Padang', 'Promosi Wisata Danau Kembar & Perkebunan Teh Alahan Panjang'],
-      ['Uda Hendra Kusuma, S.H.', 'Uda Hendra Kusuma', 'Kota Solok', 'Sarjana Hukum — Universitas Andalas', 'Advokasi Regulasi Perlindungan Situs Adat Nagari'],
-      ['Uda Bayu Anggara, S.Par.', 'Uda Bayu Anggara', 'Kab. Tanah Datar', 'Sarjana Pariwisata — Politeknik Negeri Padang', 'Pengembangan Tur Budaya Nagari Tuo Pariangan'],
-      ['Uda Riko Saputra, S.Pd.', 'Uda Riko Saputra', 'Kab. Padang Pariaman', 'Sarjana Pendidikan — Universitas Negeri Padang', 'Pelatihan Pemandu Wisata Alam Air Terjun Nyarai'],
-    ],
-    uniDelegates: [
-      ['Uni Aurelita Putri, S.I.Kom.', 'Uni Aurelita Putri', 'Kota Bukittinggi', 'Sarjana Ilmu Komunikasi — Universitas Andalas', 'Promosi Destinasi Bukittinggi Melalui Media Kreatif Digital'],
-      ['Uni Karina Dewi, S.Ars.', 'Uni Karina Dewi', 'Kab. Agam', 'Sarjana Arsitektur — Universitas Bung Hatta', 'Konsep Tata Ruang Ramah Wisata Kawasan Puncak Lawang'],
-      ['Uni Mona Adisti, S.Sn.', 'Uni Mona Adisti', 'Kota Padang Panjang', 'Sarjana Seni — ISI Padang Panjang', 'Pertunjukan Musik Tradisional & Tari Minangkabau'],
-      ['Uni Bella Nirmala, S.Sos.', 'Uni Bella Nirmala', 'Kab. Solok Selatan', 'Sarjana Sosiologi — Universitas Andalas', 'Pemberdayaan Pemuda Adat Kawasan Saribu Rumah Gadang'],
-      ['Uni Yasmin Safitri, S.E.', 'Uni Yasmin Safitri', 'Kota Pariaman', 'Sarjana Ekonomi — Universitas Negeri Padang', 'Promosi Produk Ekonomi Kreatif Bahari Kepulauan Angso Duo'],
-    ],
-  },
-];
-
-function buildDelegateBio(
-  role: 'uda' | 'uni',
-  year: string,
-  slotIndex: number,
-  tuple: [string, string, string, string, string],
-): AmbassadorBio {
-  const [fullName, shortName, region, education, focus] = tuple;
-  const rank = RANK_LABELS[slotIndex];
-  const prefix = role === 'uda' ? 'Uda' : 'Uni';
-  return {
-    role,
-    slotIndex,
-    rankLabel: `${prefix} ${rank}`,
-    fullName,
-    shortName,
-    titleBadge: `${rank} ${prefix} Duta Wisata Sumbar ${year}`,
-    region,
-    education,
-    profession: `Finalis ${prefix} Sumatera Barat ${year} · Penggerak Pariwisata ${region}`,
-    bio: `Utusan resmi ${region} pada ajang Pemilihan Uda & Uni Duta Wisata Provinsi Sumatera Barat ${year}. Aktif menggerakkan program ${focus.toLowerCase()} bersama komunitas lokal dan anggota Ikatan Uda & Uni.`,
-    advocacy: focus,
-    achievement: `${rank} ${prefix} Duta Wisata Sumatera Barat ${year} · Utusan ${region}`,
-  };
-}
-
-const YEAR_CONTINGENTS: YearLineup[] = RAW_YEARS.map((raw) => ({
-  year: raw.year,
-  uda: [
-    {...raw.utamaUda, slotIndex: 0, rankLabel: 'Uda Utama'},
-    ...raw.udaDelegates.map((tuple, i) => buildDelegateBio('uda', raw.year, i + 1, tuple)),
-  ],
-  uni: [
-    {...raw.utamaUni, slotIndex: 0, rankLabel: 'Uni Utama'},
-    ...raw.uniDelegates.map((tuple, i) => buildDelegateBio('uni', raw.year, i + 1, tuple)),
-  ],
-}));
 
 interface ClassicBodyState {
   el: HTMLElement;
@@ -399,8 +51,255 @@ interface RingBodyState {
 
 const clamp = (v: number, min: number, max: number) => Math.min(max, Math.max(min, v));
 
-function decodeModelImage(img: HTMLImageElement): void {
-  const show = () => img.classList.add('is-decoded');
+const MEDIA_CACHE_NAME = 'uda-uni-media-cache-v1';
+const FOOT_CACHE_STORAGE_KEY = 'uda-uni:foot-offsets:v1';
+
+const decodedImageUrls = new Set<string>();
+const decodedImageRefs = new Map<string, HTMLImageElement>();
+const blobUrlCache = new Map<string, string>();
+const preloadImagePromises = new Map<string, Promise<void>>();
+const footOffsetCache = new Map<string, string>();
+const footProbePromises = new Map<string, Promise<string | null>>();
+
+let mediaCachePromise: Promise<Cache | null> | null = null;
+let footSaveTimer = 0;
+
+function hydrateFootOffsetCache(): void {
+  try {
+    const raw = window.localStorage.getItem(FOOT_CACHE_STORAGE_KEY);
+    if (!raw) return;
+    const parsed = JSON.parse(raw) as Record<string, string>;
+    if (!parsed || typeof parsed !== 'object') return;
+    for (const [k, v] of Object.entries(parsed)) {
+      if (typeof v === 'string' && v.length > 0) {
+        footOffsetCache.set(k, v);
+      }
+    }
+  } catch {
+    // Ignore storage access errors in restricted contexts
+  }
+}
+
+function scheduleFootOffsetPersist(): void {
+  if (footSaveTimer) return;
+  footSaveTimer = window.setTimeout(() => {
+    footSaveTimer = 0;
+    try {
+      const serialized: Record<string, string> = {};
+      footOffsetCache.forEach((v, k) => {
+        serialized[k] = v;
+      });
+      window.localStorage.setItem(FOOT_CACHE_STORAGE_KEY, JSON.stringify(serialized));
+    } catch {
+      // Ignore quota or privacy storage errors
+    }
+  }, 400);
+}
+
+hydrateFootOffsetCache();
+
+function getMediaCache(): Promise<Cache | null> {
+  if (typeof window === 'undefined' || !('caches' in window)) {
+    return Promise.resolve(null);
+  }
+  if (!mediaCachePromise) {
+    mediaCachePromise = window.caches.open(MEDIA_CACHE_NAME).catch(() => null);
+  }
+  return mediaCachePromise;
+}
+
+function resolveCachedMediaUrl(url: string): string {
+  if (url.startsWith('cms-media://')) {
+    return resolveCmsImageUrl(url);
+  }
+  return blobUrlCache.get(url) ?? url;
+}
+
+async function ensureBlobUrlFromCache(url: string, highPriority = false): Promise<string> {
+  if (url.startsWith('cms-media://')) {
+    return resolveCmsImageUrl(url);
+  }
+  const existingBlob = blobUrlCache.get(url);
+  if (existingBlob) return existingBlob;
+
+  try {
+    const cache = await getMediaCache();
+    if (cache) {
+      const cachedRes = await cache.match(url);
+      if (cachedRes) {
+        const blob = await cachedRes.blob();
+        if (blob.size > 0) {
+          const objUrl = URL.createObjectURL(blob);
+          blobUrlCache.set(url, objUrl);
+          return objUrl;
+        }
+      }
+
+      const fetchInit: RequestInit & {priority?: string} = {
+        cache: 'force-cache',
+      };
+      if (highPriority) fetchInit.priority = 'high';
+
+      const netRes = await fetch(url, fetchInit);
+      if (netRes && netRes.ok) {
+        await cache.put(url, netRes.clone());
+        const blob = await netRes.blob();
+        if (blob.size > 0) {
+          const objUrl = URL.createObjectURL(blob);
+          blobUrlCache.set(url, objUrl);
+          return objUrl;
+        }
+      }
+    }
+  } catch {
+    // Fallback cleanly to standard browser image loading
+  }
+  return url;
+}
+
+function registerMediaCacheWorker(): void {
+  if (typeof navigator === 'undefined' || !('serviceWorker' in navigator)) return;
+  const start = () => {
+    navigator.serviceWorker.register('/sw.js', {scope: '/'}).catch(() => {
+      // Ignore registration error if preview environment restricts SW
+    });
+  };
+  if (document.readyState === 'complete') {
+    start();
+  } else {
+    window.addEventListener('load', start, {once: true});
+  }
+}
+
+function getPreferredPhotoUrl(photo: CohortPhoto): string {
+  if (!photo.full || photo.full === photo.thumb) return photo.thumb;
+  const dpr = typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1;
+  const width = typeof window !== 'undefined' ? window.innerWidth : 1280;
+  const renderWidth = width >= 1800 ? 540 : width >= 750 ? 420 : 320;
+  return renderWidth * dpr > 680 ? photo.full : photo.thumb;
+}
+
+function preloadImageUrl(url: string, highPriority = false): Promise<void> {
+  if (!url) return Promise.resolve();
+  if (decodedImageRefs.has(url)) {
+    decodedImageUrls.add(url);
+    return Promise.resolve();
+  }
+  const existing = preloadImagePromises.get(url);
+  if (existing) return existing;
+
+  const task = ensureBlobUrlFromCache(url, highPriority).then(
+    (resolvedUrl) =>
+      new Promise<void>((resolve) => {
+        const img = new Image();
+        img.decoding = 'async';
+        if ('fetchPriority' in img) {
+          (img as HTMLImageElement & {fetchPriority?: string}).fetchPriority = highPriority ? 'high' : 'low';
+        }
+        const done = () => {
+          decodedImageUrls.add(url);
+          decodedImageRefs.set(url, img);
+          resolve();
+        };
+        const fail = () => resolve();
+
+        img.src = resolvedUrl;
+        if (typeof img.decode === 'function') {
+          img
+            .decode()
+            .then(done)
+            .catch(() => {
+              if (img.complete && img.naturalWidth > 0) done();
+              else {
+                img.addEventListener('load', done, {once: true});
+                img.addEventListener('error', fail, {once: true});
+              }
+            });
+        } else if (img.complete && img.naturalWidth > 0) {
+          done();
+        } else {
+          img.addEventListener('load', done, {once: true});
+          img.addEventListener('error', fail, {once: true});
+        }
+      }),
+  );
+
+  preloadImagePromises.set(url, task);
+  return task;
+}
+
+function measureFootOffset(probeUrl: string): Promise<string | null> {
+  const cached = footOffsetCache.get(probeUrl);
+  if (cached !== undefined) return Promise.resolve(cached);
+
+  const pending = footProbePromises.get(probeUrl);
+  if (pending) return pending;
+
+  const task = new Promise<string | null>((resolve) => {
+    const probe = new Image();
+    probe.decoding = 'async';
+    if (!probeUrl.startsWith('/') && !probeUrl.startsWith('blob:') && !probeUrl.startsWith('cms-media://')) {
+      probe.crossOrigin = 'anonymous';
+    }
+    probe.onload = () => {
+      try {
+        if (!probe.naturalWidth || !probe.naturalHeight) {
+          resolve(null);
+          return;
+        }
+        const w = 48;
+        const h = Math.max(1, Math.round((w * probe.naturalHeight) / probe.naturalWidth));
+        const canvas = document.createElement('canvas');
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          resolve(null);
+          return;
+        }
+        ctx.drawImage(probe, 0, 0, w, h);
+        const data = ctx.getImageData(0, 0, w, h).data;
+        let lastRow = h - 1;
+        let found = false;
+        for (let y = h - 1; y >= 0; y--) {
+          for (let x = 0; x < w; x++) {
+            if (data[(y * w + x) * 4 + 3] > 40) {
+              lastRow = y;
+              found = true;
+              break;
+            }
+          }
+          if (found) break;
+        }
+        if (!found) {
+          resolve(null);
+          return;
+        }
+        const footStr = clamp((h - 1 - lastRow) / h, 0, 0.4).toFixed(4);
+        footOffsetCache.set(probeUrl, footStr);
+        scheduleFootOffsetPersist();
+        resolve(footStr);
+      } catch {
+        resolve(null);
+      }
+    };
+    probe.onerror = () => resolve(null);
+    probe.src = resolveCachedMediaUrl(probeUrl);
+  });
+
+  footProbePromises.set(probeUrl, task);
+  return task;
+}
+
+function decodeModelImage(img: HTMLImageElement, targetKey?: string): void {
+  const show = () => {
+    if (targetKey) decodedImageUrls.add(targetKey);
+    img.classList.add('is-decoded');
+  };
+  if (img.complete && img.naturalWidth > 0) {
+    show();
+    return;
+  }
   if (typeof img.decode === 'function') {
     img
       .decode()
@@ -412,16 +311,14 @@ function decodeModelImage(img: HTMLImageElement): void {
           img.addEventListener('load', show, {once: true});
         }
       });
-  } else if (img.complete && img.naturalWidth > 0) {
-    show();
   } else {
     img.addEventListener('load', show, {once: true});
   }
 }
 
 class RunwaySection extends HTMLElement {
-  private readonly LOOK_COUNT = 6;
-  private readonly BODY_COUNT = this.LOOK_COUNT * Math.ceil(8 / this.LOOK_COUNT); // 12
+  private LOOK_COUNT: number = SUMBAR_REGIONS.length; // Dinamis sesuai jumlah utusan per tahun (mis. 16 utk 2024/2022)
+  private BODY_COUNT: number = this.LOOK_COUNT * Math.ceil(8 / this.LOOK_COUNT);
   private readonly K = 95;
   private readonly C = 2 * Math.sqrt(95);
 
@@ -448,9 +345,10 @@ class RunwaySection extends HTMLElement {
   private yearButtons: HTMLButtonElement[] = [];
   private ringBodies: RingBodyState[] = [];
   private classicBodies: ClassicBodyState[] = [];
+  private panelCache = new Map<string, {mhead: HTMLElement; ul: HTMLElement}[]>();
 
   private index = 0;
-  private activeYear = '2025';
+  private activeYear = getCatalogLineups()[0]?.year ?? DEFAULT_CATALOG_YEAR;
   private roleFilter: RoleFilter = 'uda';
   private activePanelRole: 'uda' | 'uni' = 'uda';
   private panelOpen = false;
@@ -479,6 +377,7 @@ class RunwaySection extends HTMLElement {
 
   private rafId = 0;
   private measureRaf = 0;
+  private roleSwitchRaf = 0;
   private lastTs = 0;
   private lastFrameH = -1;
   private lastModelH = -1;
@@ -488,6 +387,10 @@ class RunwaySection extends HTMLElement {
   private wheelAcc = 0;
   private lbClearTimer = 0;
   private suppressClickUntil = 0;
+  private preloadTimer = 0;
+  private preloadIdleId = 0;
+  private preloadGen = 0;
+  private tickMarqueeTimer = 0;
 
   private dragPointerId: number | null = null;
   private dragStartX = 0;
@@ -526,6 +429,10 @@ class RunwaySection extends HTMLElement {
     this.lbNameEl = this.querySelector('[data-rw-lb-name]');
     this.lbCloseBtn = this.querySelector('[data-rw-zoom-close]');
 
+    this.renderYearButtons();
+    this.syncSlotCount();
+    this.ensureSlotMarkup();
+
     this.heroes = Array.from(this.querySelectorAll<HTMLElement>('[data-rw-hero]'));
     this.ticks = Array.from(this.querySelectorAll<HTMLButtonElement>('[data-rw-tick]'));
     this.panels = Array.from(this.querySelectorAll<HTMLElement>('[data-rw-panel]'));
@@ -554,6 +461,7 @@ class RunwaySection extends HTMLElement {
     this.setupCursor();
     this.setupObservers();
     this.setupListeners();
+    this.scheduleOppositeRolePreload();
 
     const startOffset = this.reducedMotion ? 0 : 1.15;
     this.index = 0;
@@ -590,15 +498,150 @@ class RunwaySection extends HTMLElement {
     if (this.rafId) cancelAnimationFrame(this.rafId);
     if (this.cursorRaf) cancelAnimationFrame(this.cursorRaf);
     if (this.measureRaf) cancelAnimationFrame(this.measureRaf);
+    if (this.roleSwitchRaf) cancelAnimationFrame(this.roleSwitchRaf);
     window.clearTimeout(this.autoTimer);
     window.clearTimeout(this.resizeTimer);
     window.clearTimeout(this.wheelLock);
     window.clearTimeout(this.lbClearTimer);
+    window.clearTimeout(this.preloadTimer);
+    window.clearTimeout(this.tickMarqueeTimer);
+    if (this.preloadIdleId && typeof window.cancelIdleCallback === 'function') {
+      window.cancelIdleCallback(this.preloadIdleId);
+    }
     this.visObserver?.disconnect();
     this.revealObserver?.disconnect();
     this.stageResizeObserver?.disconnect();
+    document.body.classList.remove('is-profile-focus');
     for (const fn of this.cleanups) fn();
     this.cleanups = [];
+  }
+
+  private renderYearButtons(): void {
+    const container = this.querySelector<HTMLElement>('.rw__year-pills');
+    if (!container) return;
+
+    const existingThumb = container.querySelector('.pill-3d-thumb');
+    container.innerHTML = '';
+    if (existingThumb) {
+      container.appendChild(existingThumb);
+    } else {
+      const thumb = document.createElement('span');
+      thumb.className = 'pill-3d-thumb';
+      thumb.setAttribute('aria-hidden', 'true');
+      container.appendChild(thumb);
+    }
+
+    getCatalogLineups().forEach((lineup) => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      const isActive = lineup.year === this.activeYear;
+      btn.className = isActive ? 'rw__year-btn is-active' : 'rw__year-btn';
+      btn.dataset.rwYear = lineup.year;
+      btn.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+      btn.textContent = lineup.year;
+      container.appendChild(btn);
+    });
+  }
+
+  private ensureSlotMarkup(): void {
+    const lineup = this.getActiveYearLineup();
+    const list = this.roleFilter === 'uda' ? lineup.uda : lineup.uni;
+    const basePhotos = this.roleFilter === 'uda' ? UDA_PHOTOS : UNI_PHOTOS;
+
+    if (this.actorsEl) {
+      this.actorsEl.innerHTML = '';
+      for (let i = 0; i < this.LOOK_COUNT; i++) {
+        const person = list[i];
+        const photo = person?.photo ?? basePhotos[i % basePhotos.length];
+        const altText = person ? `${person.shortName} (${person.region}) - ${lineup.year}` : `Peserta ${i + 1}`;
+        const model = document.createElement('div');
+        model.className = 'rw__model';
+        model.setAttribute('data-rw-model', '');
+        model.dataset.index = String(i);
+        model.setAttribute('aria-hidden', 'true');
+        const resolvedThumb = resolveCachedMediaUrl(photo.thumb);
+        const resolvedFull = photo.full ? resolveCachedMediaUrl(photo.full) : '';
+        const srcsetAttr =
+          resolvedFull && resolvedFull !== resolvedThumb
+            ? ` srcset="${resolvedThumb} 640w, ${resolvedFull} 1080w"`
+            : '';
+        model.innerHTML = `
+          <span class="rw__shadow" aria-hidden="true"></span>
+          <div class="rw__figure" style="--rw-ar:0.5625">
+            <div class="rw__art">
+              <img src="${resolvedThumb}"${srcsetAttr} sizes="(min-width: 1800px) 540px, (min-width: 750px) 420px, 320px" loading="${i <= 2 || i >= this.LOOK_COUNT - 2 ? 'eager' : 'lazy'}" decoding="async" width="1100" height="1956" draggable="false" data-model-image alt="${altText}">
+              <button type="button" class="rw__hit" data-rw-go="${i}" aria-label="${altText}" tabindex="-1"></button>
+            </div>
+          </div>
+        `;
+        this.actorsEl.appendChild(model);
+      }
+    }
+
+    if (this.heroesEl) {
+      this.heroesEl.innerHTML = '';
+      for (let i = 0; i < this.LOOK_COUNT; i++) {
+        const person = list[i];
+        const photo = person?.photo ?? basePhotos[i % basePhotos.length];
+        const altText = person ? `${person.shortName} (${person.region}) - ${lineup.year}` : `Peserta ${i + 1}`;
+        const hero = document.createElement('div');
+        hero.className = i === 0 ? 'rw__hero is-on' : 'rw__hero';
+        hero.setAttribute('data-rw-hero', '');
+        hero.dataset.index = String(i);
+        hero.dataset.name = altText;
+        hero.dataset.label = person ? `${person.rankLabel} ${lineup.year}: ${altText}` : altText;
+        hero.dataset.probe = photo.thumb;
+        if (i !== 0) hero.setAttribute('aria-hidden', 'true');
+        const resolvedThumb = resolveCachedMediaUrl(photo.thumb);
+        const resolvedFull = photo.full ? resolveCachedMediaUrl(photo.full) : '';
+        const srcsetAttr =
+          resolvedFull && resolvedFull !== resolvedThumb
+            ? ` srcset="${resolvedThumb} 640w, ${resolvedFull} 1080w"`
+            : '';
+        hero.innerHTML = `
+          <div class="rw__morph">
+            <span class="rw__shadow" aria-hidden="true"></span>
+            <div class="rw__figure" style="--rw-ar:0.5625">
+              <div class="rw__art">
+                <img src="${resolvedThumb}"${srcsetAttr} sizes="(min-width: 1800px) 540px, (min-width: 750px) 420px, 320px" loading="${i === 0 ? 'eager' : 'lazy'}" decoding="async" width="1100" height="1956" draggable="false" data-model-image alt="${altText}">
+                <button type="button" class="rw__zoom" data-rw-zoom aria-label="Lihat profil: ${altText}" tabindex="${i === 0 ? '0' : '-1'}"></button>
+              </div>
+            </div>
+          </div>
+        `;
+        this.heroesEl.appendChild(hero);
+      }
+    }
+
+    const ticksEl = this.querySelector<HTMLElement>('.rw__ticks');
+    if (ticksEl) {
+      ticksEl.innerHTML = '';
+      for (let i = 0; i < this.LOOK_COUNT; i++) {
+        const person = list[i];
+        const num = String(i + 1).padStart(2, '0');
+        const labelText = person ? `${person.shortName} · ${person.region}` : `Slot ${num}`;
+        const tick = document.createElement('button');
+        tick.type = 'button';
+        tick.className = 'rw__tick';
+        tick.dataset.rwTick = String(i);
+        tick.setAttribute('aria-current', i === 0 ? 'true' : 'false');
+        tick.setAttribute('aria-label', person ? `${person.rankLabel} ${lineup.year}: ${labelText}` : labelText);
+        tick.innerHTML = `<span class="rw__tick-bar"></span><span class="rw__tick-label"><span class="rw__tick-track"><span class="rw__tick-copy">${num}<span class="rw__tick-name">&nbsp;&nbsp;${labelText}</span></span><span class="rw__tick-copy rw__tick-copy--dup" aria-hidden="true">${num}<span class="rw__tick-name">&nbsp;&nbsp;${labelText}</span></span></span></span>`;
+        ticksEl.appendChild(tick);
+      }
+    }
+
+    const panelInner = this.querySelector<HTMLElement>('.rw__panel-inner');
+    if (panelInner) {
+      panelInner.querySelectorAll('[data-rw-panel]').forEach((el) => el.remove());
+      for (let i = 0; i < this.LOOK_COUNT; i++) {
+        const panel = document.createElement('div');
+        panel.className = i === 0 ? 'rw__look-panel is-in' : 'rw__look-panel';
+        panel.dataset.rwPanel = String(i);
+        if (i !== 0) panel.hidden = true;
+        panelInner.appendChild(panel);
+      }
+    }
   }
 
   private renderBioCard(person: AmbassadorBio, cardIndex: number, year: string): HTMLElement {
@@ -625,6 +668,13 @@ class RunwaySection extends HTMLElement {
     yearChip.textContent = `Angkatan ${year}`;
 
     badges.append(pill, yearChip);
+
+    if (person.finalistNumber) {
+      const numChip = document.createElement('span');
+      numChip.className = 'rw__bio-num-chip';
+      numChip.textContent = `No. Finalis ${person.finalistNumber}`;
+      badges.append(numChip);
+    }
 
     topRow.append(badges);
 
@@ -654,28 +704,55 @@ class RunwaySection extends HTMLElement {
     const metaCard = document.createElement('div');
     metaCard.className = 'rw__bio-meta-grid';
 
-    const rows: {label: string; value: string; icon: string}[] = [
+    const rows: {label: string; value?: string; bullets?: string[]; icon: string}[] = [
       {
         label: 'Utusan Daerah',
         value: `${person.region}, Provinsi Sumatera Barat`,
         icon: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M12 21s-6-5.33-6-10a6 6 0 1 1 12 0c0 4.67-6 10-6 10Z"/><circle cx="12" cy="11" r="2.2"/></svg>',
       },
-      {
-        label: 'Pendidikan',
-        value: person.education,
-        icon: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M22 10L12 5 2 10l10 5 10-5Z"/><path d="M6 12.5V17c0 1.66 2.69 3 6 3s6-1.34 6-3v-4.5"/></svg>',
-      },
-      {
-        label: 'Fokus Advokasi',
-        value: person.advocacy,
-        icon: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m14.8 9.2-1.7 4.9-4.9 1.7 1.7-4.9 4.9-1.7Z"/></svg>',
-      },
-      {
-        label: 'Prestasi & Mandat',
-        value: person.achievement,
-        icon: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="8.5" r="5.5"/><path d="M8.5 13.5 7 21l5-2.5L17 21l-1.5-7.5"/></svg>',
-      },
     ];
+
+    if (person.age?.trim()) {
+      rows.push({
+        label: 'Umur',
+        value: person.age.trim(),
+        icon: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M5 20a7 7 0 0 1 14 0"/></svg>',
+      });
+    }
+
+    if (person.education?.trim()) {
+      rows.push({
+        label: 'Pekerjaan / Pendidikan',
+        value: person.education.trim(),
+        icon: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M22 10L12 5 2 10l10 5 10-5Z"/><path d="M6 12.5V17c0 1.66 2.69 3 6 3s6-1.34 6-3v-4.5"/></svg>',
+      });
+    }
+
+    if (person.advocacy?.trim()) {
+      rows.push({
+        label: 'Fokus Advokasi',
+        value: person.advocacy.trim(),
+        icon: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m14.8 9.2-1.7 4.9-4.9 1.7 1.7-4.9 4.9-1.7Z"/></svg>',
+      });
+    }
+
+    const achievementBullets = Array.isArray(person.achievements)
+      ? person.achievements.map((item) => item.trim()).filter(Boolean)
+      : [];
+
+    if (achievementBullets.length > 0) {
+      rows.push({
+        label: 'Prestasi yang Pernah Diraih',
+        bullets: achievementBullets,
+        icon: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="8.5" r="5.5"/><path d="M8.5 13.5 7 21l5-2.5L17 21l-1.5-7.5"/></svg>',
+      });
+    } else if (person.achievement?.trim()) {
+      rows.push({
+        label: 'Prestasi & Mandat',
+        value: person.achievement.trim(),
+        icon: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="8.5" r="5.5"/><path d="M8.5 13.5 7 21l5-2.5L17 21l-1.5-7.5"/></svg>',
+      });
+    }
 
     for (const item of rows) {
       const row = document.createElement('div');
@@ -690,10 +767,23 @@ class RunwaySection extends HTMLElement {
 
       const span = document.createElement('span');
       span.textContent = item.label;
-      const strong = document.createElement('strong');
-      strong.textContent = item.value;
+      copy.append(span);
 
-      copy.append(span, strong);
+      if (item.bullets && item.bullets.length > 0) {
+        const list = document.createElement('ul');
+        list.className = 'rw__bio-achievements';
+        for (const bullet of item.bullets) {
+          const itemEl = document.createElement('li');
+          itemEl.textContent = bullet;
+          list.appendChild(itemEl);
+        }
+        copy.append(list);
+      } else if (item.value) {
+        const strong = document.createElement('strong');
+        strong.textContent = item.value;
+        copy.append(strong);
+      }
+
       row.append(iconBox, copy);
       metaCard.appendChild(row);
     }
@@ -703,57 +793,80 @@ class RunwaySection extends HTMLElement {
   }
 
   private getActiveYearLineup(): YearLineup {
-    return YEAR_CONTINGENTS.find((y) => y.year === this.activeYear) ?? YEAR_CONTINGENTS[0];
+    const catalog = getCatalogLineups();
+    return catalog.find((y) => y.year === this.activeYear) ?? catalog[0];
   }
 
-  private renderAllPanels(): void {
-    const lineup = this.getActiveYearLineup();
-    for (let i = 0; i < this.LOOK_COUNT; i++) {
-      const panel = this.panels[i];
-      if (!panel) continue;
-      panel.innerHTML = '';
+  private getOrBuildPanelSet(year: string, role: 'uda' | 'uni'): {mhead: HTMLElement; ul: HTMLElement}[] {
+    const cacheKey = `${year}:${role}`;
+    const cached = this.panelCache.get(cacheKey);
+    if (cached) return cached;
 
-      const udaPerson = lineup.uda[i];
-      const uniPerson = lineup.uni[i];
-      if (!udaPerson || !uniPerson) continue;
+    const catalog = getCatalogLineups();
+    const lineup = catalog.find((y) => y.year === year) ?? catalog[0];
+    const items: {mhead: HTMLElement; ul: HTMLElement}[] = [];
+
+    for (let i = 0; i < this.LOOK_COUNT; i++) {
+      const person = role === 'uda' ? lineup.uda[i] : lineup.uni[i];
+      if (!person) continue;
 
       const mhead = document.createElement('div');
       mhead.className = 'rw__mhead';
       const mTitle = document.createElement('span');
       mTitle.className = 'rw__mhead-title';
+      mTitle.textContent = `${person.shortName} - ${lineup.year}`;
+
       const mLabel = document.createElement('span');
       mLabel.className = 'rw__label';
+      mLabel.textContent = person.rankLabel;
+      mhead.append(mTitle, mLabel);
 
       const ul = document.createElement('ul');
       ul.className = 'rw__items';
       ul.setAttribute('role', 'list');
+      ul.appendChild(this.renderBioCard(person, role === 'uda' ? 1 : 2, lineup.year));
 
-      if (this.activePanelRole === 'uda') {
-        mTitle.textContent = `${udaPerson.shortName} - ${lineup.year}`;
-        mLabel.textContent = udaPerson.rankLabel;
-        ul.appendChild(this.renderBioCard(udaPerson, 1, lineup.year));
-      } else {
-        mTitle.textContent = `${uniPerson.shortName} - ${lineup.year}`;
-        mLabel.textContent = uniPerson.rankLabel;
-        ul.appendChild(this.renderBioCard(uniPerson, 2, lineup.year));
-      }
+      items[i] = {mhead, ul};
+    }
 
-      mhead.append(mTitle, mLabel);
-      panel.append(mhead, ul);
+    this.panelCache.set(cacheKey, items);
+    return items;
+  }
+
+  private renderAllPanels(): void {
+    const lineup = this.getActiveYearLineup();
+    const cachedSet = this.getOrBuildPanelSet(lineup.year, this.activePanelRole);
+
+    for (let i = 0; i < this.LOOK_COUNT; i++) {
+      const panel = this.panels[i];
+      const entry = cachedSet[i];
+      if (!panel || !entry) continue;
+      panel.replaceChildren(entry.mhead, entry.ul);
     }
   }
 
   private syncRoleLabels(): void {
+    const lineup = this.getActiveYearLineup();
+    const list = this.roleFilter === 'uda' ? lineup.uda : lineup.uni;
+
     this.roleButtons.forEach((btn) => {
       const r = (btn.dataset.rwRole as RoleFilter) || 'uda';
       const active = r === this.roleFilter;
       btn.classList.toggle('is-active', active);
       btn.setAttribute('aria-pressed', active ? 'true' : 'false');
+      const countEl = btn.querySelector<HTMLElement>('.rw__role-count');
+      if (countEl) {
+        countEl.textContent = String(r === 'uda' ? lineup.uda.length : lineup.uni.length);
+      }
     });
 
     const roleSwitchEl = this.querySelector<HTMLElement>('.rw__role-switch');
     if (roleSwitchEl) {
       roleSwitchEl.dataset.activeRole = this.roleFilter;
+    }
+
+    if (this.panelEl) {
+      this.panelEl.dataset.panelRole = this.activePanelRole;
     }
 
     this.yearButtons.forEach((btn) => {
@@ -766,9 +879,6 @@ class RunwaySection extends HTMLElement {
     if (this.panelTitleEl) {
       this.panelTitleEl.textContent = this.activePanelRole === 'uda' ? 'Profil Uda' : 'Profil Uni';
     }
-
-    const lineup = this.getActiveYearLineup();
-    const list = this.roleFilter === 'uda' ? lineup.uda : lineup.uni;
 
     if (this.yearBadgeEl) {
       this.yearBadgeEl.textContent = `Pemilihan ${lineup.year}`;
@@ -785,12 +895,13 @@ class RunwaySection extends HTMLElement {
       const person = list[idx];
       if (!person) return;
       const labelText = `${person.shortName} · ${person.region}`;
-      const nameSpan = tick.querySelector('.rw__tick-name');
-      if (nameSpan) {
+      tick.querySelectorAll('.rw__tick-name').forEach((nameSpan) => {
         nameSpan.innerHTML = `&nbsp;&nbsp;${labelText}`;
-      }
+      });
       tick.setAttribute('aria-label', `${person.rankLabel} ${lineup.year}: ${labelText}`);
     });
+
+    this.scheduleTickMarqueeSync();
 
     this.heroes.forEach((hero, idx) => {
       const person = list[idx];
@@ -848,34 +959,189 @@ class RunwaySection extends HTMLElement {
     };
   }
 
+  private getPrioritizedSlotOrder(): number[] {
+    const order: number[] = [];
+    const seen = new Set<number>();
+    const add = (idx: number) => {
+      const norm = ((idx % this.LOOK_COUNT) + this.LOOK_COUNT) % this.LOOK_COUNT;
+      if (!seen.has(norm)) {
+        seen.add(norm);
+        order.push(norm);
+      }
+    };
+    add(this.index);
+    for (let d = 1; d <= Math.floor(this.LOOK_COUNT / 2); d++) {
+      add(this.index + d);
+      add(this.index - d);
+    }
+    return order;
+  }
+
+  private getSlotPhoto(year: string, role: RoleFilter, idx: number, person?: AmbassadorBio): CohortPhoto {
+    const catalog = getCatalogLineups();
+    const lineup = catalog.find((y) => y.year === year) ?? catalog[0];
+    const list = role === 'uda' ? lineup.uda : lineup.uni;
+    const p = person ?? list[idx];
+    const basePhotos = role === 'uda' ? UDA_PHOTOS : UNI_PHOTOS;
+    const yearIdx = catalog.findIndex((y) => y.year === year);
+    const offset = yearIdx >= 0 ? yearIdx : 0;
+    return p?.photo ?? basePhotos[(idx + offset) % basePhotos.length] ?? basePhotos[idx % basePhotos.length];
+  }
+
+  private scheduleOppositeRolePreload(): void {
+    const gen = ++this.preloadGen;
+    window.clearTimeout(this.preloadTimer);
+    if (this.preloadIdleId && typeof window.cancelIdleCallback === 'function') {
+      window.cancelIdleCallback(this.preloadIdleId);
+      this.preloadIdleId = 0;
+    }
+
+    const oppRole: RoleFilter = this.roleFilter === 'uda' ? 'uni' : 'uda';
+    const curRole: RoleFilter = this.roleFilter;
+    const year = this.activeYear;
+    const order = this.getPrioritizedSlotOrder();
+    const seenUrls = new Set<string>();
+    const urlsToWarm: string[] = [];
+    const thumbsToMeasure: string[] = [];
+
+    const pushPhoto = (photo: CohortPhoto) => {
+      const preferred = getPreferredPhotoUrl(photo);
+      if (!seenUrls.has(preferred)) {
+        seenUrls.add(preferred);
+        urlsToWarm.push(preferred);
+      }
+      if (!seenUrls.has(photo.thumb)) {
+        seenUrls.add(photo.thumb);
+        urlsToWarm.push(photo.thumb);
+      }
+      if (!footOffsetCache.has(photo.thumb)) {
+        thumbsToMeasure.push(photo.thumb);
+      }
+    };
+
+    // Prioritize opposite role of active year first (for instant Uda <-> Uni switching), then current role's remaining slots
+    for (const idx of order) {
+      pushPhoto(this.getSlotPhoto(year, oppRole, idx));
+    }
+    for (const idx of order) {
+      pushPhoto(this.getSlotPhoto(year, curRole, idx));
+    }
+
+    // Also queue other catalog years into Cache Storage in background idle batches
+    for (const contingent of getCatalogLineups()) {
+      if (contingent.year === year) continue;
+      for (const idx of order) {
+        pushPhoto(this.getSlotPhoto(contingent.year, oppRole, idx));
+        pushPhoto(this.getSlotPhoto(contingent.year, curRole, idx));
+      }
+    }
+
+    const runWarmup = () => {
+      if (gen !== this.preloadGen) return;
+
+      // Pre-build opposite role DOM panel cache so Uda <-> Uni swap requires zero node creation
+      this.getOrBuildPanelSet(year, oppRole);
+
+      // Phase 1: warm up front 6 visible slots of opposite role into CacheStorage + decoded RAM immediately
+      const frontUrls = urlsToWarm.slice(0, 6);
+      const backUrls = urlsToWarm.slice(6);
+
+      void Promise.all(frontUrls.map((u) => preloadImageUrl(u, true))).then(() => {
+        if (gen !== this.preloadGen) return;
+
+        // Pre-compute missing foot offsets for top opposite-role slots
+        thumbsToMeasure.slice(0, 5).forEach((thumb) => {
+          void measureFootOffset(thumb);
+        });
+
+        if (backUrls.length === 0) return;
+
+        // Phase 2: warm up remaining queue into browser CacheStorage during idle time
+        let cursor = 0;
+        const warmNextBatch = () => {
+          if (gen !== this.preloadGen) return;
+          const batch = backUrls.slice(cursor, cursor + 4);
+          cursor += 4;
+          if (!batch.length) return;
+          void Promise.all(batch.map((u) => preloadImageUrl(u, false))).then(() => {
+            if (gen !== this.preloadGen || cursor >= backUrls.length) return;
+            if (typeof window.requestIdleCallback === 'function') {
+              this.preloadIdleId = window.requestIdleCallback(warmNextBatch, {timeout: 1200});
+            } else {
+              this.preloadTimer = window.setTimeout(warmNextBatch, 70);
+            }
+          });
+        };
+
+        if (typeof window.requestIdleCallback === 'function') {
+          this.preloadIdleId = window.requestIdleCallback(warmNextBatch, {timeout: 700});
+        } else {
+          this.preloadTimer = window.setTimeout(warmNextBatch, 90);
+        }
+      });
+    };
+
+    this.preloadTimer = window.setTimeout(runWarmup, 40);
+  }
+
   private syncStageGroupMedia(): void {
     const isUda = this.roleFilter === 'uda';
     const lineup = this.getActiveYearLineup();
     const list = isUda ? lineup.uda : lineup.uni;
-    const photoSet = isUda ? UNI_PHOTOS : UDA_PHOTOS;
-    // Slight per-year rotational offset using available assets so changing year/role always updates gallery visuals cleanly
-    const yearIdx = YEAR_CONTINGENTS.findIndex((y) => y.year === lineup.year);
-    const offset = yearIdx >= 0 ? yearIdx : 0;
+    const order = this.getPrioritizedSlotOrder();
 
-    for (let idx = 0; idx < this.LOOK_COUNT; idx++) {
+    for (let rank = 0; rank < order.length; rank++) {
+      const idx = order[rank];
       const person = list[idx];
       if (!person) continue;
-      const basePhotos = isUda ? UDA_PHOTOS : UNI_PHOTOS;
-      const photo = basePhotos[(idx + offset) % basePhotos.length] ?? photoSet[idx];
+      const photo = this.getSlotPhoto(lineup.year, this.roleFilter, idx, person);
       const altText = `${person.shortName} (${person.region}) - ${lineup.year}`;
-      const srcset = `${photo.thumb} 640w, ${photo.full} 1080w`;
+      const hasDistinctFull = Boolean(photo.full && photo.full !== photo.thumb);
+      const thumbSrc = resolveCachedMediaUrl(photo.thumb);
+      const fullSrc = hasDistinctFull ? resolveCachedMediaUrl(photo.full!) : '';
+      const srcset = hasDistinctFull ? `${thumbSrc} 640w, ${fullSrc} 1080w` : '';
+      const preferredUrl = getPreferredPhotoUrl(photo);
+      const alreadyDecoded =
+        decodedImageUrls.has(preferredUrl) ||
+        decodedImageUrls.has(photo.thumb) ||
+        blobUrlCache.has(photo.thumb);
+      const isFrontFive = rank < 5;
+
+      const applyPhotoToImg = (img: HTMLImageElement, alt: string) => {
+        img.alt = alt;
+        img.loading = isFrontFive ? 'eager' : 'lazy';
+        if ('fetchPriority' in img) {
+          (img as HTMLImageElement & {fetchPriority?: string}).fetchPriority = isFrontFive
+            ? 'high'
+            : 'auto';
+        }
+        const currentRaw = img.dataset.rawSrc ?? img.getAttribute('src');
+        if (currentRaw !== photo.thumb) {
+          img.dataset.rawSrc = photo.thumb;
+          if (alreadyDecoded) {
+            img.classList.add('is-decoded');
+          } else {
+            img.classList.remove('is-decoded');
+          }
+          if (srcset) img.srcset = srcset;
+          else img.removeAttribute('srcset');
+          img.src = thumbSrc;
+          decodeModelImage(img, preferredUrl);
+        } else if (!srcset && img.hasAttribute('srcset')) {
+          img.removeAttribute('srcset');
+        }
+      };
 
       const hero = this.heroes[idx];
       if (hero) {
         hero.dataset.probe = photo.thumb;
+        const cachedFoot = footOffsetCache.get(photo.thumb);
+        if (cachedFoot !== undefined) {
+          hero.style.setProperty('--rw-foot', cachedFoot);
+        }
         const img = hero.querySelector<HTMLImageElement>('[data-model-image]');
         if (img) {
-          img.alt = altText;
-          if (img.src !== photo.thumb) {
-            img.src = photo.thumb;
-            img.srcset = srcset;
-            decodeModelImage(img);
-          }
+          applyPhotoToImg(img, altText);
         }
         const zBtn = hero.querySelector<HTMLButtonElement>('[data-rw-zoom]');
         if (zBtn) {
@@ -886,14 +1152,13 @@ class RunwaySection extends HTMLElement {
       this.actorsEl
         .querySelectorAll<HTMLElement>(`.rw__model[data-index="${idx}"]`)
         .forEach((modelEl) => {
+          const cachedFoot = footOffsetCache.get(photo.thumb);
+          if (cachedFoot !== undefined) {
+            modelEl.style.setProperty('--rw-foot', cachedFoot);
+          }
           const img = modelEl.querySelector<HTMLImageElement>('[data-model-image]');
           if (img) {
-            img.alt = altText;
-            if (img.src !== photo.thumb) {
-              img.src = photo.thumb;
-              img.srcset = srcset;
-              decodeModelImage(img);
-            }
+            applyPhotoToImg(img, altText);
           }
           const hitBtn = modelEl.querySelector<HTMLButtonElement>('[data-rw-go]');
           if (hitBtn) {
@@ -904,15 +1169,21 @@ class RunwaySection extends HTMLElement {
 
     if (this.zoomed && this.lbStageEl) {
       const person = list[this.index];
-      const basePhotos = isUda ? UDA_PHOTOS : UNI_PHOTOS;
-      const photo = basePhotos[(this.index + offset) % basePhotos.length] ?? basePhotos[this.index];
+      const photo = this.getSlotPhoto(lineup.year, this.roleFilter, this.index, person);
       const lbImg = this.lbStageEl.querySelector<HTMLImageElement>('.rw__lb-model [data-model-image]');
       if (person && lbImg) {
         lbImg.alt = `${person.shortName} - ${lineup.year}`;
-        if (lbImg.src !== photo.thumb) {
-          lbImg.src = photo.thumb;
-          lbImg.srcset = `${photo.thumb} 640w, ${photo.full} 1080w`;
-          decodeModelImage(lbImg);
+        const lbRaw = lbImg.dataset.rawSrc ?? lbImg.getAttribute('src');
+        if (lbRaw !== photo.thumb) {
+          lbImg.dataset.rawSrc = photo.thumb;
+          const thumbSrc = resolveCachedMediaUrl(photo.thumb);
+          if (photo.full && photo.full !== photo.thumb) {
+            lbImg.srcset = `${thumbSrc} 640w, ${resolveCachedMediaUrl(photo.full)} 1080w`;
+          } else {
+            lbImg.removeAttribute('srcset');
+          }
+          lbImg.src = thumbSrc;
+          decodeModelImage(lbImg, getPreferredPhotoUrl(photo));
         }
       }
     }
@@ -938,7 +1209,11 @@ class RunwaySection extends HTMLElement {
     if (!this.panelOpen) {
       this.panelOpen = true;
       this.classList.add('is-panel-open');
+      document.body.classList.add('is-profile-focus');
       this.panelEl?.setAttribute('aria-hidden', 'false');
+      if (window.scrollY > 24) {
+        window.scrollTo({top: 0, behavior: 'smooth'});
+      }
       if (syncMeasure) {
         this.measure();
       } else {
@@ -960,6 +1235,7 @@ class RunwaySection extends HTMLElement {
     if (!this.panelOpen) return;
     this.panelOpen = false;
     this.classList.remove('is-panel-open');
+    document.body.classList.remove('is-profile-focus');
     this.panelEl?.setAttribute('aria-hidden', 'true');
     this.hot(null);
     if (syncMeasure) {
@@ -987,51 +1263,186 @@ class RunwaySection extends HTMLElement {
     this.closeZoom();
   }
 
-  public setYear(year: string, resetSlot = true): void {
-    if (!YEAR_CONTINGENTS.some((y) => y.year === year)) return;
+  private syncSlotCount(): boolean {
+    const lineup = this.getActiveYearLineup();
+    const list = this.roleFilter === 'uda' ? lineup.uda : lineup.uni;
+    const nextLook = Math.max(1, list.length);
+    const nextBody = nextLook * Math.ceil(8 / nextLook);
+    const changed = nextLook !== this.LOOK_COUNT || nextBody !== this.BODY_COUNT;
+    this.LOOK_COUNT = nextLook;
+    this.BODY_COUNT = nextBody;
+    return changed;
+  }
+
+  private rebuildStageSlots(resetToZero = false): void {
+    this.syncSlotCount();
+    this.panelCache.clear();
+    this.ensureSlotMarkup();
+    this.heroes = Array.from(this.querySelectorAll<HTMLElement>('[data-rw-hero]'));
+    this.ticks = Array.from(this.querySelectorAll<HTMLButtonElement>('[data-rw-tick]'));
+    this.panels = Array.from(this.querySelectorAll<HTMLElement>('[data-rw-panel]'));
+
+    const nextIdx = resetToZero ? 0 : Math.min(this.index, this.LOOK_COUNT - 1);
+    this.index = nextIdx;
+    this.target = nextIdx;
+    this.cur = nextIdx;
+    this.vel = 0;
+
+    this.renderAllPanels();
+    this.syncRoleLabels();
+    this.setupBodies();
+
+    const N = this.BODY_COUNT;
+    for (let a = 0; a < N; a++) {
+      const cb = this.classicBodies[a];
+      const goal = (((a - nextIdx) % N) + N) % N;
+      cb.goal = goal;
+      cb.x = goal;
+      cb.g = goal;
+      cb.v = 0;
+      cb.from = goal;
+      cb.trip = false;
+    }
+
+    this.syncStageGroupMedia();
+    this.setupImagesAndFeet();
+    this.measure();
+    this.setIndex(nextIdx, false);
+    this.renderAll();
+    this.scheduleOppositeRolePreload();
+  }
+
+  public refreshFromCms(): void {
+    const catalog = getCatalogLineups();
+    if (!catalog.some((y) => y.year === this.activeYear)) {
+      this.activeYear = catalog[0]?.year ?? this.activeYear;
+    }
+
+    this.renderYearButtons();
+    this.yearButtons = Array.from(this.querySelectorAll<HTMLButtonElement>('[data-rw-year]'));
+    this.rebuildStageSlots(false);
+  }
+
+  public setYear(year: string, resetSlot = true, immediate = false): void {
+    if (!getCatalogLineups().some((y) => y.year === year)) return;
     const changed = this.activeYear !== year;
     this.activeYear = year;
 
     if (changed) {
-      this.renderAllPanels();
-      this.syncRoleLabels();
-      this.syncStageGroupMedia();
-      this.setupImagesAndFeet();
-      if (resetSlot && this.index !== 0) {
-        this.go(0);
+      const slotsChanged = this.syncSlotCount();
+      // Update pill buttons & trigger sliding thumb immediately at frame 0 (matching top-nav smoothness)
+      this.yearButtons.forEach((btn) => {
+        const active = (btn.dataset.rwYear || '') === this.activeYear;
+        btn.classList.toggle('is-active', active);
+        btn.setAttribute('aria-pressed', active ? 'true' : 'false');
+      });
+      this.emitStateChange();
+
+      const applyYearWork = () => {
+        if (slotsChanged) {
+          this.rebuildStageSlots(resetSlot);
+        } else {
+          this.renderAllPanels();
+          this.syncRoleLabels();
+          this.syncStageGroupMedia();
+          this.setupImagesAndFeet();
+          this.scheduleOppositeRolePreload();
+          if (resetSlot && this.index !== 0) {
+            this.go(0);
+          }
+        }
+        this.stage?.classList.remove('is-switching');
+        if (!this.reducedMotion && !this.zoomed) {
+          this.stage.classList.remove('is-sweep');
+          void this.stage.offsetWidth;
+          this.stage.classList.add('is-sweep');
+        }
+      };
+
+      if (this.roleSwitchRaf) {
+        cancelAnimationFrame(this.roleSwitchRaf);
+        this.roleSwitchRaf = 0;
       }
-      if (!this.reducedMotion && !this.zoomed) {
-        this.stage.classList.remove('is-sweep');
-        void this.stage.offsetWidth;
-        this.stage.classList.add('is-sweep');
+
+      if (immediate) {
+        applyYearWork();
+        return;
       }
+
+      if (!this.reducedMotion) {
+        this.stage?.classList.add('is-switching');
+      }
+      this.roleSwitchRaf = requestAnimationFrame(() => {
+        this.roleSwitchRaf = 0;
+        applyYearWork();
+      });
     }
   }
 
-  public setRoleFilter(role: RoleFilter): void {
+  public setRoleFilter(role: RoleFilter, immediate = false): void {
     const changed = this.roleFilter !== role || this.activePanelRole !== role;
     this.roleFilter = role;
     this.activePanelRole = role;
 
     if (changed) {
-      this.renderAllPanels();
-      this.syncRoleLabels();
-      this.syncStageGroupMedia();
-      this.setupImagesAndFeet();
-      if (!this.reducedMotion && !this.zoomed) {
-        this.stage.classList.remove('is-sweep');
-        void this.stage.offsetWidth;
-        this.stage.classList.add('is-sweep');
+      const roleSwitchEl = this.querySelector<HTMLElement>('.rw__role-switch');
+      if (roleSwitchEl) {
+        roleSwitchEl.dataset.activeRole = this.roleFilter;
       }
-    }
+      this.roleButtons.forEach((btn) => {
+        const active = (btn.dataset.rwRole as RoleFilter) === this.roleFilter;
+        btn.classList.toggle('is-active', active);
+        btn.setAttribute('aria-pressed', active ? 'true' : 'false');
+      });
+      this.emitStateChange();
 
-    if (this.panelOpen) {
-      const activePanel = this.panels[this.index];
-      if (activePanel && changed) {
-        activePanel.classList.remove('is-in');
-        void activePanel.offsetWidth;
-        activePanel.classList.add('is-in');
+      const slotsChanged = this.syncSlotCount();
+      const applyRoleWork = () => {
+        if (slotsChanged) {
+          this.rebuildStageSlots(false);
+        } else {
+          this.renderAllPanels();
+          this.syncRoleLabels();
+          this.syncStageGroupMedia();
+          this.setupImagesAndFeet();
+          this.scheduleOppositeRolePreload();
+        }
+        this.stage?.classList.remove('is-switching');
+        if (!this.reducedMotion && !this.zoomed) {
+          this.stage.classList.remove('is-sweep');
+          void this.stage.offsetWidth;
+          this.stage.classList.add('is-sweep');
+        }
+
+        if (this.panelOpen) {
+          const activePanel = this.panels[this.index];
+          if (activePanel) {
+            activePanel.classList.remove('is-in');
+            void activePanel.offsetWidth;
+            activePanel.classList.add('is-in');
+          }
+          this.hot(this.activePanelRole === 'uda' ? 1 : 2, false);
+        }
+      };
+
+      if (this.roleSwitchRaf) {
+        cancelAnimationFrame(this.roleSwitchRaf);
+        this.roleSwitchRaf = 0;
       }
+
+      if (immediate) {
+        applyRoleWork();
+        return;
+      }
+
+      if (!this.reducedMotion) {
+        this.stage?.classList.add('is-switching');
+      }
+      this.roleSwitchRaf = requestAnimationFrame(() => {
+        this.roleSwitchRaf = 0;
+        applyRoleWork();
+      });
+    } else if (this.panelOpen) {
       this.hot(this.activePanelRole === 'uda' ? 1 : 2, false);
     }
   }
@@ -1039,9 +1450,9 @@ class RunwaySection extends HTMLElement {
   public goToProfile(slotIdx: number, role: RoleFilter = 'uda', year?: string): void {
     this.engage();
     if (year && year !== this.activeYear) {
-      this.setYear(year, false);
+      this.setYear(year, false, true);
     }
-    this.setRoleFilter(role);
+    this.setRoleFilter(role, true);
     this.go(slotIdx);
     this.focusParticipant(role);
     window.setTimeout(() => this.hot(role === 'uda' ? 1 : 2, true), 60);
@@ -1049,14 +1460,17 @@ class RunwaySection extends HTMLElement {
 
   private setupBodies(): void {
     const originals = Array.from(this.actorsEl.querySelectorAll<HTMLElement>('[data-rw-model]'));
-    for (let i = 0; i < originals.length; i++) {
-      const clone = originals[i].cloneNode(true) as HTMLElement;
-      clone.setAttribute('data-rw-clone', '');
-      clone.dataset.index = String(i);
-      clone.querySelectorAll('img').forEach((img) => {
-        img.loading = 'lazy';
-      });
-      this.actorsEl.appendChild(clone);
+    const clonesNeeded = Math.max(0, Math.ceil(8 / this.LOOK_COUNT) - 1);
+    for (let c = 0; c < clonesNeeded; c++) {
+      for (let i = 0; i < originals.length; i++) {
+        const clone = originals[i].cloneNode(true) as HTMLElement;
+        clone.setAttribute('data-rw-clone', '');
+        clone.dataset.index = String(i);
+        clone.querySelectorAll('img').forEach((img) => {
+          img.loading = 'lazy';
+        });
+        this.actorsEl.appendChild(clone);
+      }
     }
 
     const allBodies = Array.from(this.actorsEl.querySelectorAll<HTMLElement>('[data-rw-model]'));
@@ -1081,51 +1495,34 @@ class RunwaySection extends HTMLElement {
   }
 
   private setupImagesAndFeet(): void {
-    this.querySelectorAll<HTMLImageElement>('[data-model-image]').forEach(decodeModelImage);
+    this.querySelectorAll<HTMLImageElement>('[data-model-image]').forEach((img) => {
+      decodeModelImage(img);
+    });
 
     for (const hero of this.heroes) {
       const probeUrl = hero.dataset.probe;
       const idx = hero.dataset.index;
       if (!probeUrl || idx === undefined) continue;
 
-      const probe = new Image();
-      probe.crossOrigin = 'anonymous';
-      probe.onload = () => {
-        try {
-          if (!probe.naturalWidth || !probe.naturalHeight) return;
-          const w = 48;
-          const h = Math.max(1, Math.round((w * probe.naturalHeight) / probe.naturalWidth));
-          const canvas = document.createElement('canvas');
-          canvas.width = w;
-          canvas.height = h;
-          const ctx = canvas.getContext('2d');
-          if (!ctx) return;
-          ctx.drawImage(probe, 0, 0, w, h);
-          const data = ctx.getImageData(0, 0, w, h).data;
-          let lastRow = h - 1;
-          let found = false;
-          for (let y = h - 1; y >= 0; y--) {
-            for (let x = 0; x < w; x++) {
-              if (data[(y * w + x) * 4 + 3] > 40) {
-                lastRow = y;
-                found = true;
-                break;
-              }
-            }
-            if (found) break;
-          }
-          if (!found) return;
-          const foot = clamp((h - 1 - lastRow) / h, 0, 0.4);
-          const footStr = foot.toFixed(4);
-          hero.style.setProperty('--rw-foot', footStr);
-          this.actorsEl
-            .querySelectorAll<HTMLElement>(`.rw__model[data-index="${idx}"]`)
-            .forEach((m) => m.style.setProperty('--rw-foot', footStr));
-        } catch {
-          // Tainted canvas silently keeps offset 0
-        }
+      const applyFoot = (footStr: string) => {
+        if (hero.dataset.probe !== probeUrl) return;
+        hero.style.setProperty('--rw-foot', footStr);
+        this.actorsEl
+          .querySelectorAll<HTMLElement>(`.rw__model[data-index="${idx}"]`)
+          .forEach((m) => m.style.setProperty('--rw-foot', footStr));
       };
-      probe.src = probeUrl;
+
+      const cached = footOffsetCache.get(probeUrl);
+      if (cached !== undefined) {
+        applyFoot(cached);
+        continue;
+      }
+
+      void measureFootOffset(probeUrl).then((footStr) => {
+        if (footStr !== null) {
+          applyFoot(footStr);
+        }
+      });
     }
   }
 
@@ -1484,6 +1881,17 @@ class RunwaySection extends HTMLElement {
     };
     this.addEventListener('click', onSectionClick);
     this.cleanups.push(() => this.removeEventListener('click', onSectionClick));
+
+    const ticksContainer = this.querySelector<HTMLElement>('.rw__ticks');
+    if (ticksContainer) {
+      const onTickTransitionEnd = (e: TransitionEvent) => {
+        if (e.propertyName === 'flex-basis') {
+          this.syncActiveTickMarquee();
+        }
+      };
+      ticksContainer.addEventListener('transitionend', onTickTransitionEnd);
+      this.cleanups.push(() => ticksContainer.removeEventListener('transitionend', onTickTransitionEnd));
+    }
   }
 
   private handleClickTarget(t: HTMLElement | null, event?: MouseEvent): void {
@@ -1497,7 +1905,7 @@ class RunwaySection extends HTMLElement {
       return;
     }
 
-    // 0-year. year selector pills (2025..2020)
+    // 0-year. year selector pills (2024..tahun berjalan)
     const yearBtn = t.closest<HTMLButtonElement>('[data-rw-year]');
     if (yearBtn?.dataset.rwYear) {
       this.engage();
@@ -1707,6 +2115,54 @@ class RunwaySection extends HTMLElement {
     }
 
     this.renderAll();
+    this.syncActiveTickMarquee();
+  }
+
+  private syncActiveTickMarquee(): void {
+    const gapPx = 28;
+    for (let idx = 0; idx < this.ticks.length; idx++) {
+      const tick = this.ticks[idx];
+      const label = tick.querySelector<HTMLElement>('.rw__tick-label');
+      if (!label) continue;
+
+      if (idx !== this.index) {
+        label.classList.remove('is-marquee');
+        label.style.removeProperty('--rw-marquee-shift');
+        label.style.removeProperty('--rw-marquee-dur');
+        continue;
+      }
+
+      const copy = label.querySelector<HTMLElement>('.rw__tick-copy:not(.rw__tick-copy--dup)');
+      const availableW = label.clientWidth;
+      const textW = copy ? Math.ceil(copy.getBoundingClientRect().width) : 0;
+
+      if (availableW > 0 && textW > availableW + 2) {
+        const shiftPx = textW + gapPx;
+        const durSec = clamp(shiftPx / 34, 4.8, 15).toFixed(2);
+        const alreadySame =
+          label.classList.contains('is-marquee') &&
+          label.style.getPropertyValue('--rw-marquee-shift') === `${shiftPx}px`;
+        if (!alreadySame) {
+          label.classList.remove('is-marquee');
+          label.style.setProperty('--rw-marquee-shift', `${shiftPx}px`);
+          label.style.setProperty('--rw-marquee-dur', `${durSec}s`);
+          void label.offsetWidth;
+          label.classList.add('is-marquee');
+        }
+      } else {
+        label.classList.remove('is-marquee');
+        label.style.removeProperty('--rw-marquee-shift');
+        label.style.removeProperty('--rw-marquee-dur');
+      }
+    }
+  }
+
+  private scheduleTickMarqueeSync(): void {
+    window.clearTimeout(this.tickMarqueeTimer);
+    requestAnimationFrame(() => this.syncActiveTickMarquee());
+    this.tickMarqueeTimer = window.setTimeout(() => {
+      this.syncActiveTickMarquee();
+    }, 840);
   }
 
   private setStill(v: boolean): void {
@@ -1753,23 +2209,41 @@ class RunwaySection extends HTMLElement {
       const P = (this.isMobile ? 1.9 : 1.65) * W;
       const floor = H - 34;
       const horizon = 0.36 * H;
-      const step = (2 * Math.PI) / N;
+      const visualStep = (40 * Math.PI) / 180;
 
       for (let a = 0; a < N; a++) {
         const s = this.ringBodies[a];
-        let phi = ((a - this.cur) * step) % (2 * Math.PI);
-        while (phi <= -Math.PI) phi += 2 * Math.PI;
-        while (phi > Math.PI) phi -= 2 * Math.PI;
+        let delta = (a - this.cur) % N;
+        while (delta <= -N / 2) delta += N;
+        while (delta > N / 2) delta -= N;
 
-        const zDepth = R * (1 - Math.cos(phi));
+        const sl = Math.abs(delta);
+        const phiVis = clamp(delta, -2.65, 2.65) * visualStep;
+        const zDepth = R * (1 - Math.cos(phiVis));
         const persp = P / (P + zDepth);
-        const sl = Math.abs(phi) / step;
         const scale = persp * (1 + (this.fs - 1) * clamp(1 - sl, 0, 1));
-        const x = cx + R * Math.sin(phi) * persp;
+        const x = cx + R * Math.sin(phiVis) * persp;
         const feet = horizon + (floor - horizon) * persp;
         const bottom = H - feet;
-        const blur = sl <= 1 ? 1.8 * sl : Math.min(1.8 + (sl - 1) * 2, 6.5);
-        let opacity = clamp((Math.cos(phi) + 0.55) / 0.3, 0, 1);
+
+        let blur = 0;
+        if (sl <= 1) {
+          blur = 1.5 * sl;
+        } else if (sl <= 2) {
+          blur = 1.5 + 1.5 * (sl - 1);
+        } else {
+          blur = Math.min(3.0 + 2.4 * (sl - 2), 4.8);
+        }
+
+        let opacity = 0;
+        if (sl <= 1) {
+          opacity = 1 - 0.15 * sl;
+        } else if (sl <= 2) {
+          opacity = 0.85 - 0.43 * (sl - 1);
+        } else if (sl < 2.65) {
+          opacity = 0.42 * ((2.65 - sl) / 0.65);
+        }
+
         if (this.still && sl < 0.02) opacity = 0;
         const zIdx = Math.round(scale * 1000);
 
@@ -1974,6 +2448,7 @@ class RunwaySection extends HTMLElement {
     this.style.setProperty('--rw-progress', ((norm + 1) / this.LOOK_COUNT).toFixed(3));
 
     if (!changed) {
+      this.scheduleTickMarqueeSync();
       return;
     }
 
@@ -2005,6 +2480,7 @@ class RunwaySection extends HTMLElement {
       tick.setAttribute('aria-current', idx === norm ? 'true' : 'false');
       tick.classList.toggle('is-past', idx < norm);
     });
+    this.scheduleTickMarqueeSync();
 
     this.panels.forEach((panel, idx) => {
       panel.classList.remove('is-in');
@@ -2050,7 +2526,7 @@ class RunwaySection extends HTMLElement {
 
   private go(i: number): void {
     let d = (((i - this.index) % this.LOOK_COUNT) + this.LOOK_COUNT) % this.LOOK_COUNT;
-    if (d > 3) d -= this.LOOK_COUNT;
+    if (d > this.LOOK_COUNT / 2) d -= this.LOOK_COUNT;
     this.moveTo(Math.round(this.target) + d);
   }
 
@@ -2285,29 +2761,35 @@ function setupSearch(): void {
     haystack: string;
   }
 
-  const allPeople: SearchRecord[] = [];
-  for (const lineup of YEAR_CONTINGENTS) {
-    for (const person of [...lineup.uda, ...lineup.uni]) {
-      allPeople.push({
-        year: lineup.year,
-        person,
-        haystack: [
-          person.fullName,
-          person.rankLabel,
-          person.role,
-          person.region,
-          lineup.year,
-          person.education,
-          person.profession,
-          person.bio,
-          person.advocacy,
-          person.achievement,
-        ]
-          .join(' ')
-          .toLowerCase(),
-      });
+  const getSearchRecords = (): SearchRecord[] => {
+    const allPeople: SearchRecord[] = [];
+    for (const lineup of getCatalogLineups()) {
+      for (const person of [...lineup.uda, ...lineup.uni]) {
+        allPeople.push({
+          year: lineup.year,
+          person,
+          haystack: [
+            person.fullName,
+            person.rankLabel,
+            person.role,
+            person.region,
+            lineup.year,
+            person.age ?? '',
+            person.finalistNumber ?? '',
+            person.education,
+            person.profession,
+            person.bio,
+            person.advocacy,
+            person.achievement,
+            ...(person.achievements ?? []),
+          ]
+            .join(' ')
+            .toLowerCase(),
+        });
+      }
     }
-  }
+    return allPeople;
+  };
 
   const closeResults = () => {
     resultsEl.hidden = true;
@@ -2325,7 +2807,7 @@ function setupSearch(): void {
     }
 
     const terms = q.split(/\s+/).filter(Boolean);
-    const matches = allPeople.filter((rec) => terms.every((t) => rec.haystack.includes(t)));
+    const matches = getSearchRecords().filter((rec) => terms.every((t) => rec.haystack.includes(t)));
 
     resultsEl.innerHTML = '';
     const meta = document.createElement('div');
@@ -2401,20 +2883,32 @@ function setupSearch(): void {
 }
 
 function setupInfoDialogs(): void {
-  const openButtons = document.querySelectorAll<HTMLButtonElement>('[data-open-dialog]');
-  openButtons.forEach((btn) => {
-    btn.addEventListener('click', () => {
-      const targetId = btn.dataset.openDialog;
+  document.addEventListener('click', (e) => {
+    const target = e.target instanceof Element ? e.target : null;
+    if (!target) return;
+
+    const openBtn = target.closest<HTMLElement>('[data-open-dialog]');
+    if (openBtn) {
+      const targetId = openBtn.dataset.openDialog;
       if (!targetId) return;
       const dialog = document.getElementById(targetId) as HTMLDialogElement | null;
-      dialog?.showModal();
-    });
+      if (!dialog) return;
+      const indexRaw = openBtn.dataset.openDialogIndex;
+      const requestedIndex = indexRaw ? Number(indexRaw) : 0;
+      const slideIndex = Number.isFinite(requestedIndex) && requestedIndex >= 0 ? requestedIndex : 0;
+      dialog.dispatchEvent(new CustomEvent('cs:reset-open', {detail: {index: slideIndex}}));
+      if (!dialog.open) dialog.showModal();
+      return;
+    }
+
+    const closeBtn = target.closest<HTMLElement>('[data-close-dialog]');
+    if (closeBtn) {
+      const parentDialog = closeBtn.closest<HTMLDialogElement>('dialog.info-dialog');
+      parentDialog?.close();
+    }
   });
 
   document.querySelectorAll<HTMLDialogElement>('dialog.info-dialog').forEach((dialog) => {
-    const closeBtn = dialog.querySelector<HTMLButtonElement>('[data-close-dialog]');
-    closeBtn?.addEventListener('click', () => dialog.close());
-
     dialog.addEventListener('click', (e) => {
       if (e.target !== dialog) return;
       const r = dialog.getBoundingClientRect();
@@ -2443,6 +2937,9 @@ function initSlidingPill(
   if (!thumb) return null;
 
   let initialized = false;
+  let animatingUntil = 0;
+  let lastViewportWidth = window.innerWidth;
+
   const update = (instant = false) => {
     const activeEl = container.querySelector<HTMLElement>(activeSelector);
     if (!activeEl) return;
@@ -2450,6 +2947,9 @@ function initSlidingPill(
     const shouldSnap = instant || !initialized;
     if (shouldSnap) {
       container.classList.add('is-snapping');
+    } else {
+      container.classList.remove('is-snapping');
+      animatingUntil = performance.now() + 460;
     }
 
     const x = activeEl.offsetLeft;
@@ -2475,52 +2975,28 @@ function initSlidingPill(
   requestAnimationFrame(() => update(true));
 
   if ('ResizeObserver' in window) {
-    const ro = new ResizeObserver(() => update(true));
+    const ro = new ResizeObserver(() => {
+      if (!initialized) {
+        update(true);
+        return;
+      }
+      const isAnimating = performance.now() < animatingUntil;
+      const viewportChanged = window.innerWidth !== lastViewportWidth;
+      lastViewportWidth = window.innerWidth;
+      update(viewportChanged && !isAnimating);
+    });
     ro.observe(container);
   }
-  window.addEventListener('resize', () => update(true));
+  window.addEventListener('resize', () => {
+    lastViewportWidth = window.innerWidth;
+    update(performance.now() >= animatingUntil);
+  });
 
   return {update};
 }
 
-function setupBoardFilter(pillCtrl?: SlidingPillController | null): void {
-  const buttons = Array.from(document.querySelectorAll<HTMLButtonElement>('[data-board-filter]'));
-  const cards = Array.from(document.querySelectorAll<HTMLElement>('[data-board-card]'));
-  const countEl = document.querySelector<HTMLElement>('[data-board-count]');
-  const stage = document.querySelector<HTMLElement>('[data-board-stage]');
-  if (!buttons.length || !cards.length) return;
-
-  const applyFilter = (division: string) => {
-    let visibleCount = 0;
-    cards.forEach((card) => {
-      const match = division === 'all' || card.dataset.division === division;
-      card.hidden = !match;
-      if (match) visibleCount += 1;
-    });
-
-    buttons.forEach((btn) => {
-      const active = btn.dataset.boardFilter === division;
-      btn.classList.toggle('is-active', active);
-      btn.setAttribute('aria-pressed', active ? 'true' : 'false');
-    });
-
-    pillCtrl?.update(false);
-
-    if (countEl) {
-      countEl.textContent = `Menampilkan ${visibleCount} pengurus · Masa Bakti 2027`;
-    }
-
-    if (stage) {
-      stage.dispatchEvent(new CustomEvent('board:filterchange'));
-    }
-  };
-
-  buttons.forEach((btn) => {
-    btn.addEventListener('click', () => {
-      const division = btn.dataset.boardFilter || 'all';
-      applyFilter(division);
-    });
-  });
+function triggerSectionCountUp(target: Element | null): void {
+  target?.dispatchEvent(new CustomEvent('rw:replay-countup'));
 }
 
 function setupAnchorLinks(): void {
@@ -2537,6 +3013,7 @@ function setupAnchorLinks(): void {
         window.scrollTo({top: 0, behavior: 'smooth'});
       } else {
         target.scrollIntoView({behavior: 'smooth', block: 'start'});
+        triggerSectionCountUp(target);
       }
     });
   });
@@ -2552,6 +3029,7 @@ function setupTopNavAndPills(): void {
   const navBtns = Array.from(topNavEl?.querySelectorAll<HTMLButtonElement>('.top-nav-btn') ?? []);
   const eventDialog = document.getElementById('kegiatan-dialog') as HTMLDialogElement | null;
   const visiMisiDialog = document.getElementById('visi-misi-dialog') as HTMLDialogElement | null;
+  const regDialog = document.getElementById('pendaftaran-dialog') as HTMLDialogElement | null;
 
   const syncControlPills = () => {
     yearPillCtrl?.update(false);
@@ -2588,7 +3066,9 @@ function setupTopNavAndPills(): void {
       if (hash === '#galeri') {
         window.scrollTo({top: 0, behavior: 'smooth'});
       } else {
-        document.querySelector<HTMLElement>(hash)?.scrollIntoView({behavior: 'smooth', block: 'start'});
+        const target = document.querySelector<HTMLElement>(hash);
+        target?.scrollIntoView({behavior: 'smooth', block: 'start'});
+        triggerSectionCountUp(target);
       }
     });
   });
@@ -2607,7 +3087,11 @@ function setupTopNavAndPills(): void {
   let scrollTick = 0;
   const updateActiveByScroll = () => {
     scrollTick = 0;
-    if (eventDialog?.open || visiMisiDialog?.open) return;
+    if (eventDialog?.open || visiMisiDialog?.open || regDialog?.open) return;
+    if (document.body.classList.contains('is-profile-focus')) {
+      setActiveNavTarget('#galeri');
+      return;
+    }
     const probeY = window.scrollY + window.innerHeight * 0.42;
     const atBottom = window.scrollY + window.innerHeight >= document.documentElement.scrollHeight - 40;
     let current = '#galeri';
@@ -2622,6 +3106,7 @@ function setupTopNavAndPills(): void {
 
   eventDialog?.addEventListener('close', updateActiveByScroll);
   visiMisiDialog?.addEventListener('close', updateActiveByScroll);
+  regDialog?.addEventListener('close', updateActiveByScroll);
 
   window.addEventListener(
     'scroll',
@@ -2635,156 +3120,443 @@ function setupTopNavAndPills(): void {
   updateActiveByScroll();
 }
 
-interface BoardProfileDetail {
-  name: string;
-  role: string;
-  division: string;
-  badge: string;
-  origin: string;
-  photo: string;
-  summary: string;
-  tasks: string[];
+function createVerifiedBadgeSvg(): SVGSVGElement {
+  const ns = 'http://www.w3.org/2000/svg';
+  const svg = document.createElementNS(ns, 'svg');
+  svg.setAttribute('viewBox', '0 0 24 24');
+  svg.setAttribute('width', '18');
+  svg.setAttribute('height', '18');
+  svg.setAttribute('fill', 'none');
+  svg.setAttribute('aria-hidden', 'true');
+
+  const p1 = document.createElementNS(ns, 'path');
+  p1.setAttribute(
+    'd',
+    'M12 2l2.12 1.8 2.75-.32 1.07 2.55 2.55 1.07-.32 2.75L22 12l-1.8 2.15.32 2.75-2.55 1.07-1.07 2.55-2.75-.32L12 22l-2.15-1.8-2.75.32-1.07-2.55-2.55-1.07.32-2.75L2 12l1.8-2.12-.32-2.75 2.55-1.07L7.1 3.5l2.75.32L12 2z',
+  );
+  p1.setAttribute('fill', '#1b8f4d');
+
+  const p2 = document.createElementNS(ns, 'path');
+  p2.setAttribute('d', 'M8.8 12.2l2.1 2.1 4.4-4.6');
+  p2.setAttribute('stroke', '#ffffff');
+  p2.setAttribute('stroke-width', '2.1');
+  p2.setAttribute('stroke-linecap', 'round');
+  p2.setAttribute('stroke-linejoin', 'round');
+
+  svg.append(p1, p2);
+  return svg;
 }
 
-const BOARD_PROFILES: Record<string, BoardProfileDetail> = {
-  'riky-pratama': {
-    name: 'Uda Riky Pratama, S.T.',
-    role: 'Ketua Umum · Masa Bakti 2027',
-    division: 'Pengurus Inti · Masa Bakti 2027',
-    badge: 'Uda Utama 2025',
-    origin: 'Utusan Kota Bukittinggi',
-    photo: 'https://reel-ref-try-the-look.vercel.app/assets/model-1-640.webp',
-    summary:
-      'Memimpin arah kebijakan strategis Ikatan Uda & Uni Duta Wisata Provinsi Sumatera Barat, mengoordinasikan sinergi dengan pemerintah provinsi, dan mewakili organisasi pada forum nasional.',
-    tasks: [
-      'Menetapkan rencana strategis organisasi dan peta jalan promosi pariwisata tahunan 2027.',
-      'Mengoordinasikan audiensi lintas lembaga bersama Dinas Pariwisata Provinsi Sumatera Barat dan mitra daerah.',
-      'Memimpin delegasi resmi Uda & Uni Sumbar pada ajang duta wisata tingkat nasional.',
-    ],
-  },
-  'mutiara-khairunnisa': {
-    name: 'Uni Mutiara Khairunnisa, S.E.',
-    role: 'Wakil Ketua Umum · Masa Bakti 2027',
-    division: 'Pengurus Inti · Masa Bakti 2027',
-    badge: 'Uni Utama 2025',
-    origin: 'Utusan Kota Padang',
-    photo: 'https://reel-ref-try-the-look.vercel.app/assets/model-2-640.webp',
-    summary:
-      'Mengawal tata kelola program kerja lintas bidang, pembinaan ikatan Uda & Uni di 19 kabupaten/kota, serta evaluasi dampak kegiatan tahunan.',
-    tasks: [
-      'Menyelaraskan agenda bidang advokasi, promosi digital, riset budaya, dan kemitraan.',
-      'Mendampingi pembinaan dan standarisasi peran Uda & Uni di seluruh kabupaten/kota Sumatera Barat.',
-      'Melakukan evaluasi berkala capaian indikator keberhasilan program kerja ikatan.',
-    ],
-  },
-  'aulia-rahmadani': {
-    name: 'Uni Aulia Rahmadani, S.I.Kom.',
-    role: 'Sekretaris Umum · Masa Bakti 2027',
-    division: 'Pengurus Inti · Masa Bakti 2027',
-    badge: 'Uni Utama 2023',
-    origin: 'Utusan Kota Padang Panjang',
-    photo: 'https://reel-ref-try-the-look.vercel.app/assets/model-3-640.webp',
-    summary:
-      'Mengelola administrasi kesekretariatan, pemutakhiran basis data alumni lintas angkatan, dokumentasi resmi, serta korespondensi kelembagaan.',
-    tasks: [
-      'Menyusun notulensi rapat pengurus inti, surat-menyurat resmi, dan arsip keputusan organisasi.',
-      'Memelihara direktori keanggotaan aktif Uda & Uni Duta Wisata di 19 kabupaten/kota.',
-      'Mengatur jadwal tugas keprotokolan dan penugasan resmi duta di tingkat provinsi.',
-    ],
-  },
-  'fikri-ramadhan': {
-    name: 'Uda Fikri Ramadhan, S.Ak.',
-    role: 'Bendahara Umum · Masa Bakti 2027',
-    division: 'Pengurus Inti · Masa Bakti 2027',
-    badge: 'Uda Utama 2024',
-    origin: 'Utusan Kab. Tanah Datar',
-    photo: 'https://reel-ref-try-the-look.vercel.app/assets/model-5-640.webp',
-    summary:
-      'Bertanggung jawab atas perencanaan anggaran, tata kelola keuangan organisasi yang transparan dan akuntabel, serta pelaporan pendanaan program kerja.',
-    tasks: [
-      'Menyusun Rencana Anggaran Biaya tahunan seluruh bidang kerja periode 2027.',
-      'Mengelola pencatatan kas, dukungan sponsor kemitraan, dan audit internal berkala.',
-      'Menyajikan laporan pertanggungjawaban keuangan setiap akhir triwulan.',
-    ],
-  },
-  'farhan-maulana': {
-    name: 'Uda Farhan Maulana, S.H.',
-    role: 'Koordinator Advokasi & Budaya · 2027',
-    division: 'Bidang Advokasi & Budaya · 2027',
-    badge: 'Uda Utama 2023',
-    origin: 'Utusan Kota Padang',
-    photo: 'https://reel-ref-try-the-look.vercel.app/assets/model-4-640.webp',
-    summary:
-      'Menggerakkan edukasi sadar wisata, pelestarian cagar budaya, serta pembinaan Kelompok Sadar Wisata (Pokdarwis) dan generasi muda sadar adat di nagari.',
-    tasks: [
-      'Menyelenggarakan lokakarya Sapta Pesona bagi pengelola desa wisata di berbagai nagari.',
-      'Mengawal kampanye pelestarian situs cagar budaya dan warisan sejarah Ranah Minang.',
-      'Mendorong lahirnya inisiatif ekowisata berkelanjutan berbasis komunitas lokal.',
-    ],
-  },
-  'zahra-nabila': {
-    name: 'Uni Zahra Nabila Putri, S.Hum.',
-    role: 'Koordinator Riset & Kurasi Adat · 2027',
-    division: 'Bidang Advokasi & Budaya · 2027',
-    badge: 'Uni Utama 2024',
-    origin: 'Utusan Kab. Agam',
-    photo: 'https://reel-ref-try-the-look.vercel.app/assets/model-6-640.webp',
-    summary:
-      'Menyusun materi kurasi busana adat, dokumentasi sejarah nagari, serta standar pengetahuan kebudayaan Minangkabau untuk pembekalan duta wisata.',
-    tasks: [
-      'Menyusun modul pengetahuan adat basandi syarak, sastra lisan, dan tata busana Minangkabau.',
-      'Melakukan verifikasi narasi budaya untuk setiap materi publikasi resmi ikatan.',
-      'Menjadi narasumber pembekalan finalis Uda & Uni kabupaten/kota dan provinsi.',
-    ],
-  },
-  'hafiz-alfaruq': {
-    name: 'Uda Hafiz Al-Faruq, S.Kom.',
-    role: 'Koordinator Promosi & Media Digital · 2027',
-    division: 'Bidang Promosi & Media · 2027',
-    badge: 'Uda Utama 2022',
-    origin: 'Utusan Kota Payakumbuh',
-    photo: 'https://reel-ref-try-the-look.vercel.app/assets/model-6-640.webp',
-    summary:
-      'Mengelola kampanye digital destinasi Sumatera Barat, produksi konten dokumenter wisata, dan pengembangan arsip direktori resmi ikatan.',
-    tasks: [
-      'Memproduksi seri dokumenter visual destinasi unggulan di 19 kabupaten/kota.',
-      'Mengembangkan kanal digital dan katalog resmi alumni Uda & Uni Sumbar.',
-      'Mengelola strategi komunikasi media sosial untuk menjangkau wisatawan muda.',
-    ],
-  },
-  'nabila-syafitri': {
-    name: 'Uni Nabila Syafitri, S.Par.',
-    role: 'Koordinator Diplomasi & Publikasi · 2027',
-    division: 'Bidang Promosi & Media · 2027',
-    badge: 'Uni Utama 2022',
-    origin: 'Utusan Kab. Pesisir Selatan',
-    photo: 'https://reel-ref-try-the-look.vercel.app/assets/model-4-640.webp',
-    summary:
-      'Mengoordinasikan keprotokolan tugas duta wisata, juru bicara agenda promosi antarprovinsi, dan delegasi misi budaya mancanegara.',
-    tasks: [
-      'Menjadi penghubung resmi misi promosi pariwisata bersama pemangku kepentingan nasional & global.',
-      'Mengatur standar keprotokolan dan tata wicara duta pada ajang resmi kepariwisataan.',
-      'Mengawal publikasi siaran pers dan kemitraan media nasional maupun internasional.',
-    ],
-  },
-  'salsabila-azzahra': {
-    name: 'Uni Salsabila Azzahra, S.Sos.',
-    role: 'Koordinator Kemitraan & Sosial · 2027',
-    division: 'Bidang Kemitraan & Sosial · 2027',
-    badge: 'Uni Utama 2021',
-    origin: 'Utusan Kota Pariaman',
-    photo: 'https://reel-ref-try-the-look.vercel.app/assets/model-5-640.webp',
-    summary:
-      'Menjalin kemitraan bersama pengrajin kriya tenun dan UMKM kuliner serta menggerakkan program bakti sosial dan aksi tanggap bencana daerah.',
-    tasks: [
-      'Memfasilitasi pameran kriya tenun songket, sulaman tradisional, dan UMKM ekonomi kreatif nagari.',
-      'Menggerakkan relawan alumni untuk aksi kemanusiaan dan tanggap darurat bencana di Sumatera Barat.',
-      'Membangun kolaborasi program tanggung jawab sosial bersama mitra swasta dan komunitas.',
-    ],
-  },
-};
+function createBoardStatIcon(kind: 'year' | 'tasks'): SVGSVGElement {
+  const ns = 'http://www.w3.org/2000/svg';
+  const svg = document.createElementNS(ns, 'svg');
+  svg.setAttribute('width', '14');
+  svg.setAttribute('height', '14');
+  svg.setAttribute('viewBox', '0 0 24 24');
+  svg.setAttribute('fill', 'none');
+  svg.setAttribute('stroke', 'currentColor');
+  svg.setAttribute('stroke-width', '1.9');
+  svg.setAttribute('stroke-linecap', 'round');
+  svg.setAttribute('stroke-linejoin', 'round');
+  svg.setAttribute('aria-hidden', 'true');
+
+  if (kind === 'year') {
+    const p = document.createElementNS(ns, 'path');
+    p.setAttribute('d', 'M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2');
+    const c = document.createElementNS(ns, 'circle');
+    c.setAttribute('cx', '12');
+    c.setAttribute('cy', '7');
+    c.setAttribute('r', '4');
+    svg.append(p, c);
+  } else {
+    const r = document.createElementNS(ns, 'rect');
+    r.setAttribute('x', '8');
+    r.setAttribute('y', '8');
+    r.setAttribute('width', '12');
+    r.setAttribute('height', '12');
+    r.setAttribute('rx', '2');
+    const p = document.createElementNS(ns, 'path');
+    p.setAttribute('d', 'M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2');
+    svg.append(r, p);
+  }
+  return svg;
+}
+
+function renderEventsFromCms(): void {
+  const events = getPublishedEvents();
+  const track = document.querySelector<HTMLElement>('#event .showcase-track');
+  const dotsWrap = document.querySelector<HTMLElement>('#event .showcase-dots');
+  const modalStage = document.querySelector<HTMLElement>('#kegiatan-dialog [data-cs-stage]');
+  const total = events.length;
+  const pad = (n: number) => String(n).padStart(2, '0');
+
+  if (track) {
+    track.innerHTML = '';
+    events.forEach((ev, idx) => {
+      const card = document.createElement('article');
+      card.className = 'showcase-card';
+      card.dataset.showcaseCard = String(idx);
+      const pos = idx === 0 ? 'active' : idx === 1 ? 'next' : idx === total - 1 ? 'prev' : 'hidden';
+      card.dataset.pos = pos;
+      card.setAttribute('aria-hidden', idx === 0 ? 'false' : 'true');
+
+      const visual = document.createElement('div');
+      visual.className = 'showcase-visual';
+      const img = document.createElement('img');
+      img.src = resolveCmsImageUrl(ev.photo);
+      img.alt = ev.photoAlt || ev.title;
+      img.loading = 'lazy';
+      img.draggable = false;
+      img.referrerPolicy = 'no-referrer';
+      const tag = document.createElement('span');
+      tag.className = 'showcase-visual-tag';
+      tag.textContent = `${pad(idx + 1)} / ${pad(total)}`;
+      visual.append(img, tag);
+
+      const content = document.createElement('div');
+      content.className = 'showcase-content';
+
+      const brand = document.createElement('div');
+      brand.className = 'showcase-brand';
+      const emblem = document.createElement('img');
+      emblem.src = '/assets/aistudio/logo_uda_uni_2027_a45f5678.png';
+      emblem.width = 18;
+      emblem.height = 18;
+      emblem.alt = '';
+      emblem.setAttribute('aria-hidden', 'true');
+      const catSpan = document.createElement('span');
+      catSpan.textContent = ev.category;
+      brand.append(emblem, catSpan);
+
+      const h3 = document.createElement('h3');
+      h3.textContent = ev.title;
+
+      const desc = document.createElement('p');
+      desc.className = 'showcase-desc';
+      desc.textContent = ev.cardSummary;
+
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'showcase-read-more';
+      btn.dataset.openDialog = 'kegiatan-dialog';
+      btn.dataset.openDialogIndex = String(idx);
+      const btnText = document.createElement('span');
+      btnText.textContent = 'Selengkapnya';
+      const btnIcon = document.createElement('span');
+      btnIcon.className = 'showcase-read-icon';
+      btnIcon.setAttribute('aria-hidden', 'true');
+      btnIcon.textContent = '→';
+      btn.append(btnText, btnIcon);
+
+      const metricsEl = document.createElement('div');
+      metricsEl.className = 'showcase-metrics';
+      ev.metrics.slice(0, 3).forEach((m) => {
+        if (!m.value && !m.label) return;
+        const metricItem = document.createElement('div');
+        metricItem.className = 'showcase-metric';
+        const strong = document.createElement('strong');
+        strong.textContent = m.value;
+        const label = document.createElement('span');
+        label.textContent = m.label;
+        metricItem.append(strong, label);
+        metricsEl.appendChild(metricItem);
+      });
+
+      content.append(brand, h3, desc, btn, metricsEl);
+      card.append(visual, content);
+      track.appendChild(card);
+    });
+  }
+
+  if (dotsWrap) {
+    dotsWrap.innerHTML = '';
+    events.forEach((_ev, idx) => {
+      const dot = document.createElement('button');
+      dot.type = 'button';
+      dot.className = `showcase-dot${idx === 0 ? ' is-active' : ''}`;
+      dot.dataset.showcaseDot = String(idx);
+      dot.setAttribute('aria-label', `Program ${idx + 1}`);
+      dot.setAttribute('aria-selected', idx === 0 ? 'true' : 'false');
+      dotsWrap.appendChild(dot);
+    });
+  }
+
+  if (modalStage) {
+    modalStage.innerHTML = '';
+    events.forEach((ev, idx) => {
+      const cardEl = document.createElement('article');
+      cardEl.className = 'cs-card';
+      cardEl.dataset.csCard = '';
+      cardEl.dataset.csPos = idx === 0 ? 'active' : 'hidden';
+
+      const grid = document.createElement('div');
+      grid.className = 'cs-card-grid';
+
+      const visual = document.createElement('div');
+      visual.className = 'cs-card-visual cs-card-visual--photo';
+      const img = document.createElement('img');
+      img.className = 'cs-event-photo';
+      img.src = resolveCmsImageUrl(ev.photo);
+      img.alt = ev.photoAlt || ev.title;
+      img.loading = 'lazy';
+      img.referrerPolicy = 'no-referrer';
+      visual.appendChild(img);
+
+      const body = document.createElement('div');
+      body.className = 'cs-card-body';
+
+      const top = document.createElement('div');
+      top.className = 'cs-card-top';
+
+      const brand = document.createElement('div');
+      brand.className = 'cs-card-brand';
+      const emblem = document.createElement('img');
+      emblem.src = '/assets/aistudio/logo_uda_uni_2027_a45f5678.png';
+      emblem.width = 16;
+      emblem.height = 16;
+      emblem.alt = '';
+      emblem.setAttribute('aria-hidden', 'true');
+      const kickerSpan = document.createElement('span');
+      kickerSpan.textContent = ev.modalKicker || ev.category;
+      brand.append(emblem, kickerSpan);
+
+      const title = document.createElement('h3');
+      title.className = 'cs-card-title';
+      title.textContent = ev.title;
+
+      const sub = document.createElement('p');
+      sub.className = 'cs-card-sub';
+      sub.textContent = ev.focusLine;
+
+      const summary = document.createElement('p');
+      summary.className = 'cs-card-summary';
+      summary.textContent = ev.detailSummary;
+
+      const drawer = document.createElement('div');
+      drawer.className = 'cs-detail-drawer cs-detail-drawer--open';
+      const ul = document.createElement('ul');
+      ev.details.forEach((d) => {
+        if (!d.label && !d.text) return;
+        const li = document.createElement('li');
+        if (d.label) {
+          const strong = document.createElement('strong');
+          strong.textContent = `${d.label}: `;
+          li.appendChild(strong);
+        }
+        li.appendChild(document.createTextNode(d.text));
+        ul.appendChild(li);
+      });
+      drawer.appendChild(ul);
+
+      top.append(brand, title, sub, summary, drawer);
+      body.appendChild(top);
+      grid.append(visual, body);
+      cardEl.appendChild(grid);
+      modalStage.appendChild(cardEl);
+    });
+  }
+}
+
+function renderBoardFromCms(): void {
+  const state = getCmsState();
+  const strip = document.querySelector<HTMLElement>('#kepengurusan-2027 .board-summary-strip');
+  const grid = document.querySelector<HTMLElement>('#kepengurusan-2027 [data-board-grid]');
+
+  if (strip) {
+    strip.innerHTML = '';
+    state.boardSummary.forEach((item) => {
+      const wrap = document.createElement('div');
+      wrap.className = 'board-summary-item';
+
+      const dt = document.createElement('dt');
+      dt.textContent = item.label;
+
+      const dd = document.createElement('dd');
+      const numSpan = document.createElement('span');
+      numSpan.className = 'board-summary-num';
+      numSpan.textContent = item.value;
+      dd.appendChild(numSpan);
+
+      if (item.unit) {
+        dd.appendChild(document.createTextNode(' '));
+        const unitSpan = document.createElement('span');
+        unitSpan.className = 'board-summary-unit';
+        unitSpan.textContent = item.unit;
+        dd.appendChild(unitSpan);
+      }
+
+      wrap.append(dt, dd);
+      strip.appendChild(wrap);
+    });
+  }
+
+  if (grid) {
+    const members = getPublishedBoardMembers();
+    grid.innerHTML = '';
+
+    members.forEach((m) => {
+      const article = document.createElement('article');
+      article.className = `board-card${m.isCore ? ' is-core' : ''}`;
+      article.dataset.boardCard = '';
+      article.dataset.boardId = m.id;
+      article.dataset.division = m.divisionKey;
+
+      const canvas = document.createElement('div');
+      canvas.className = 'board-card-canvas';
+
+      const photoUrl = resolveCmsImageUrl(m.photo);
+      const photo = document.createElement('img');
+      photo.className = 'board-card-photo';
+      photo.src = photoUrl;
+      photo.alt = m.photoAlt || m.name;
+      photo.loading = 'lazy';
+      photo.referrerPolicy = 'no-referrer';
+
+      const blurImg = document.createElement('img');
+      blurImg.className = 'board-card-photo-blur';
+      blurImg.src = photoUrl;
+      blurImg.alt = '';
+      blurImg.loading = 'lazy';
+      blurImg.referrerPolicy = 'no-referrer';
+      blurImg.setAttribute('aria-hidden', 'true');
+
+      const frost = document.createElement('div');
+      frost.className = 'board-card-frost';
+      frost.setAttribute('aria-hidden', 'true');
+
+      const overlay = document.createElement('div');
+      overlay.className = 'board-card-overlay';
+
+      const nameRow = document.createElement('div');
+      nameRow.className = 'board-name-row';
+      const nameEl = document.createElement('h3');
+      nameEl.className = 'board-name';
+      nameEl.textContent = m.cardName || m.name;
+      const verified = document.createElement('span');
+      verified.className = 'board-verified';
+      verified.title = 'Pengurus Resmi 2027';
+      verified.setAttribute('aria-label', 'Terverifikasi');
+      verified.appendChild(createVerifiedBadgeSvg());
+      nameRow.append(nameEl, verified);
+
+      const roleCopy = document.createElement('p');
+      roleCopy.className = 'board-role-copy';
+      const strongRole = document.createElement('strong');
+      strongRole.textContent = m.cardRolePrefix;
+      roleCopy.append(strongRole, document.createTextNode(m.cardRoleCopy ? ` · ${m.cardRoleCopy}` : ''));
+
+      const foot = document.createElement('div');
+      foot.className = 'board-card-foot';
+
+      const stats = document.createElement('div');
+      stats.className = 'board-stats';
+
+      const yearStat = document.createElement('span');
+      yearStat.className = 'board-stat';
+      yearStat.title = 'Angkatan Utama';
+      const yearLabel = document.createElement('span');
+      yearLabel.textContent = m.cohortYear || '2024';
+      yearStat.append(createBoardStatIcon('year'), yearLabel);
+
+      const tasksStat = document.createElement('span');
+      tasksStat.className = 'board-stat';
+      tasksStat.title = 'Mandat Program Kerja';
+      const tasksLabel = document.createElement('span');
+      tasksLabel.textContent = String(m.tasks.length || 3);
+      tasksStat.append(createBoardStatIcon('tasks'), tasksLabel);
+
+      stats.append(yearStat, tasksStat);
+
+      const detailBtn = document.createElement('button');
+      detailBtn.type = 'button';
+      detailBtn.className = 'board-pill-cta';
+      detailBtn.dataset.boardDetail = m.id;
+      const dText = document.createElement('span');
+      dText.textContent = 'Detail';
+      const dPlus = document.createElement('span');
+      dPlus.setAttribute('aria-hidden', 'true');
+      dPlus.textContent = '+';
+      detailBtn.append(dText, dPlus);
+
+      foot.append(stats, detailBtn);
+      overlay.append(nameRow, roleCopy, foot);
+      canvas.append(photo, blurImg, frost, overlay);
+      article.appendChild(canvas);
+      grid.appendChild(article);
+    });
+  }
+}
+
+function renderVisiMisiFromCms(): void {
+  const dialog = document.getElementById('visi-misi-dialog');
+  if (!dialog) return;
+  const vm = getCmsState().visimisi;
+
+  const eyebrowEl = dialog.querySelector<HTMLElement>('.vm-eyebrow');
+  if (eyebrowEl) eyebrowEl.textContent = vm.eyebrow;
+
+  const chipsWrap = dialog.querySelector<HTMLElement>('.vm-card-chips--static');
+  if (chipsWrap) {
+    chipsWrap.innerHTML = '';
+    vm.chips.forEach((chip) => {
+      const span = document.createElement('span');
+      span.className = 'vm-chip-pill';
+      span.textContent = chip;
+      chipsWrap.appendChild(span);
+    });
+  }
+
+  const quoteEl = dialog.querySelector<HTMLElement>('.vm-visi-quote');
+  if (quoteEl) {
+    quoteEl.innerHTML = '';
+    quoteEl.appendChild(document.createTextNode(`${vm.visiQuoteLead} `));
+    const muted = document.createElement('span');
+    muted.className = 'vm-visi-quote-muted';
+    muted.textContent = vm.visiQuoteMuted;
+    quoteEl.appendChild(muted);
+  }
+
+  const descEl = dialog.querySelector<HTMLElement>('.vm-visi-desc');
+  if (descEl) descEl.textContent = vm.visiDesc;
+
+  const sealSpan = dialog.querySelector<HTMLElement>('.vm-seal-chip span');
+  if (sealSpan) sealSpan.textContent = vm.sealLabel;
+
+  const renderPanelList = (panelName: string, items: typeof vm.misiItems) => {
+    const listEl = dialog.querySelector<HTMLElement>(`[data-vm-panel="${panelName}"] .vm-dark-list`);
+    if (!listEl) return;
+    listEl.innerHTML = '';
+    items.forEach((item) => {
+      const li = document.createElement('li');
+      li.className = 'vm-dark-entry';
+
+      const idxSpan = document.createElement('span');
+      idxSpan.className = 'vm-entry-index';
+      idxSpan.textContent = item.indexLabel;
+
+      const h3 = document.createElement('h3');
+      h3.textContent = item.title;
+
+      const p = document.createElement('p');
+      p.textContent = item.description;
+
+      li.append(idxSpan, h3, p);
+      listEl.appendChild(li);
+    });
+  };
+
+  renderPanelList('misi', vm.misiItems);
+  renderPanelList('sebaran', vm.sebaranItems);
+  renderPanelList('komitmen', vm.komitmenItems);
+}
+
+let boardCardsAbortCtrl: AbortController | null = null;
 
 function setupBoardCards3D(): void {
+  boardCardsAbortCtrl?.abort();
+  boardCardsAbortCtrl = new AbortController();
+  const {signal} = boardCardsAbortCtrl;
+
   const cards = Array.from(document.querySelectorAll<HTMLElement>('[data-board-card]'));
   const stage = document.querySelector<HTMLElement>('[data-board-stage]');
   const dotsWrap = document.querySelector<HTMLElement>('[data-board-dots]');
@@ -2835,7 +3607,7 @@ function setupBoardCards3D(): void {
         dot.type = 'button';
         dot.className = 'board-stage-dot';
         dot.setAttribute('aria-label', `Tampilkan pengurus urutan ${i + 1}`);
-        dot.addEventListener('click', () => go(i));
+        dot.addEventListener('click', () => go(i), {signal});
         dotsWrap.appendChild(dot);
       }
     }
@@ -2919,40 +3691,36 @@ function setupBoardCards3D(): void {
   };
 
   prevBtns.forEach((btn) => {
-    btn.addEventListener('click', () => go(active - 1));
+    btn.addEventListener('click', () => go(active - 1), {signal});
   });
 
   nextBtns.forEach((btn) => {
-    btn.addEventListener('click', () => go(active + 1));
-  });
-
-  cards.forEach((card) => {
-    card.addEventListener('click', (e: MouseEvent) => {
-      const pos = card.dataset.pos;
-      if (pos === 'prev' || pos === 'next' || pos === 'prev-far' || pos === 'next-far') {
-        e.preventDefault();
-        const visible = getVisibleCards();
-        const idx = visible.indexOf(card);
-        if (idx !== -1) go(idx);
-      }
-    });
+    btn.addEventListener('click', () => go(active + 1), {signal});
   });
 
   if (stage) {
-    stage.addEventListener('board:filterchange', () => {
-      active = 0;
-      renderDeck();
-    });
+    stage.addEventListener(
+      'board:filterchange',
+      () => {
+        active = 0;
+        renderDeck();
+      },
+      {signal},
+    );
 
-    stage.addEventListener('keydown', (e: KeyboardEvent) => {
-      if (e.key === 'ArrowDown' || e.key === 'PageDown') {
-        e.preventDefault();
-        go(active + 1);
-      } else if (e.key === 'ArrowUp' || e.key === 'PageUp') {
-        e.preventDefault();
-        go(active - 1);
-      }
-    });
+    stage.addEventListener(
+      'keydown',
+      (e: KeyboardEvent) => {
+        if (e.key === 'ArrowDown' || e.key === 'PageDown') {
+          e.preventDefault();
+          go(active + 1);
+        } else if (e.key === 'ArrowUp' || e.key === 'PageUp') {
+          e.preventDefault();
+          go(active - 1);
+        }
+      },
+      {signal},
+    );
 
     stage.addEventListener(
       'wheel',
@@ -2969,27 +3737,39 @@ function setupBoardCards3D(): void {
         wheelLockUntil = now + 340;
         go(goingDown ? active + 1 : active - 1);
       },
-      {passive: false},
+      {passive: false, signal},
     );
 
-    stage.addEventListener('pointerdown', (e: PointerEvent) => {
-      if ((e.target as HTMLElement | null)?.closest('button')) return;
-      startY = e.clientY;
-      tracking = true;
-    });
+    stage.addEventListener(
+      'pointerdown',
+      (e: PointerEvent) => {
+        if ((e.target as HTMLElement | null)?.closest('button')) return;
+        startY = e.clientY;
+        tracking = true;
+      },
+      {signal},
+    );
 
-    stage.addEventListener('pointerup', (e: PointerEvent) => {
-      if (!tracking) return;
-      tracking = false;
-      const dy = e.clientY - startY;
-      if (Math.abs(dy) > 40) {
-        go(dy < 0 ? active + 1 : active - 1);
-      }
-    });
+    stage.addEventListener(
+      'pointerup',
+      (e: PointerEvent) => {
+        if (!tracking) return;
+        tracking = false;
+        const dy = e.clientY - startY;
+        if (Math.abs(dy) > 40) {
+          go(dy < 0 ? active + 1 : active - 1);
+        }
+      },
+      {signal},
+    );
 
-    stage.addEventListener('pointercancel', () => {
-      tracking = false;
-    });
+    stage.addEventListener(
+      'pointercancel',
+      () => {
+        tracking = false;
+      },
+      {signal},
+    );
   }
 
   renderDeck();
@@ -3010,86 +3790,430 @@ function setupBoardCards3D(): void {
         card.style.setProperty('--my', nextMy);
       };
 
-      card.addEventListener('pointerenter', () => {
-        card.classList.add('is-tilting');
-      });
+      card.addEventListener(
+        'pointerenter',
+        () => {
+          card.classList.add('is-tilting');
+        },
+        {signal},
+      );
 
-      card.addEventListener('pointermove', (e: PointerEvent) => {
-        if (e.pointerType !== 'mouse') return;
-        const rect = card.getBoundingClientRect();
-        if (!rect.width || !rect.height) return;
-        const px = clamp((e.clientX - rect.left) / rect.width, 0, 1);
-        const py = clamp((e.clientY - rect.top) / rect.height, 0, 1);
+      card.addEventListener(
+        'pointermove',
+        (e: PointerEvent) => {
+          if (e.pointerType !== 'mouse') return;
+          const rect = card.getBoundingClientRect();
+          if (!rect.width || !rect.height) return;
+          const px = clamp((e.clientX - rect.left) / rect.width, 0, 1);
+          const py = clamp((e.clientY - rect.top) / rect.height, 0, 1);
 
-        nextRx = (0.5 - py) * 7.5;
-        nextRy = (px - 0.5) * 9;
-        nextMx = `${(px * 100).toFixed(1)}%`;
-        nextMy = `${(py * 100).toFixed(1)}%`;
+          nextRx = (0.5 - py) * 7.5;
+          nextRy = (px - 0.5) * 9;
+          nextMx = `${(px * 100).toFixed(1)}%`;
+          nextMy = `${(py * 100).toFixed(1)}%`;
 
-        if (!rafId) {
-          rafId = requestAnimationFrame(applyTilt);
-        }
-      });
+          if (!rafId) {
+            rafId = requestAnimationFrame(applyTilt);
+          }
+        },
+        {signal},
+      );
 
-      card.addEventListener('pointerleave', () => {
-        if (rafId) {
-          cancelAnimationFrame(rafId);
-          rafId = 0;
-        }
-        card.classList.remove('is-tilting');
-        card.style.setProperty('--rx', '0deg');
-        card.style.setProperty('--ry', '0deg');
-      });
+      card.addEventListener(
+        'pointerleave',
+        () => {
+          if (rafId) {
+            cancelAnimationFrame(rafId);
+            rafId = 0;
+          }
+          card.classList.remove('is-tilting');
+          card.style.setProperty('--rx', '0deg');
+          card.style.setProperty('--ry', '0deg');
+        },
+        {signal},
+      );
     });
   }
 
   if (!dialog) return;
-  const photoEl = dialog.querySelector<HTMLImageElement>('[data-bd-photo]');
-  const badgeEl = dialog.querySelector<HTMLElement>('[data-bd-badge]');
-  const divisionEl = dialog.querySelector<HTMLElement>('[data-bd-division]');
-  const nameEl = dialog.querySelector<HTMLElement>('[data-bd-name]');
-  const roleEl = dialog.querySelector<HTMLElement>('[data-bd-role]');
-  const summaryEl = dialog.querySelector<HTMLElement>('[data-bd-summary]');
-  const tasksEl = dialog.querySelector<HTMLUListElement>('[data-bd-tasks]');
-  const originEl = dialog.querySelector<HTMLElement>('[data-bd-origin]');
+  const boardCarouselEl = dialog.querySelector<HTMLElement>('[data-cs-carousel="board"]');
+  const boardStage = dialog.querySelector<HTMLElement>('[data-bd-stage]');
+  const boardKickerEl = dialog.querySelector<HTMLElement>('[data-bd-kicker]');
+  const boardTitleEl = dialog.querySelector<HTMLElement>('#board-dialog-title');
+  const boardMembers = getPublishedBoardMembers();
+
+  if (boardStage) {
+    boardStage.innerHTML = '';
+
+    boardMembers.forEach((profile, idx) => {
+      const cardEl = document.createElement('article');
+      cardEl.className = 'cs-card';
+      cardEl.dataset.csCard = '';
+      cardEl.dataset.boardProfileId = profile.id;
+      cardEl.dataset.csPos = idx === 0 ? 'active' : 'hidden';
+
+      const grid = document.createElement('div');
+      grid.className = 'cs-card-grid';
+
+      const visual = document.createElement('div');
+      visual.className = 'cs-card-visual cs-card-visual--obsidian cs-card-visual--portrait';
+
+      const img = document.createElement('img');
+      img.className = 'cs-board-portrait';
+      img.src = resolveCmsImageUrl(profile.photo);
+      img.alt = profile.name;
+      img.loading = 'lazy';
+      img.referrerPolicy = 'no-referrer';
+
+      visual.append(img);
+
+      const body = document.createElement('div');
+      body.className = 'cs-card-body';
+
+      const top = document.createElement('div');
+      top.className = 'cs-card-top';
+
+      const brand = document.createElement('div');
+      brand.className = 'cs-card-brand';
+      const emblem = document.createElement('img');
+      emblem.src = '/assets/aistudio/logo_uda_uni_2027_a45f5678.png';
+      emblem.width = 16;
+      emblem.height = 16;
+      emblem.alt = '';
+      emblem.setAttribute('aria-hidden', 'true');
+      const divLabel = document.createElement('span');
+      divLabel.textContent = profile.division;
+      brand.append(emblem, divLabel);
+
+      const title = document.createElement('h3');
+      title.className = 'cs-card-title';
+      title.textContent = profile.name;
+
+      const sub = document.createElement('p');
+      sub.className = 'cs-card-sub';
+      sub.textContent = `${profile.role} · ${profile.origin}`;
+
+      const summary = document.createElement('p');
+      summary.className = 'cs-card-summary';
+      summary.textContent = profile.summary;
+
+      const drawer = document.createElement('div');
+      drawer.className = 'cs-detail-drawer cs-detail-drawer--open';
+      const ul = document.createElement('ul');
+      profile.tasks.forEach((task, taskIdx) => {
+        const li = document.createElement('li');
+        const label = document.createElement('strong');
+        label.textContent = `Mandat ${taskIdx + 1}: `;
+        li.append(label, document.createTextNode(task));
+        ul.appendChild(li);
+      });
+      drawer.appendChild(ul);
+
+      top.append(brand, title, sub, summary, drawer);
+      body.appendChild(top);
+      grid.append(visual, body);
+      cardEl.appendChild(grid);
+      boardStage.appendChild(cardEl);
+    });
+  }
+
+  const boardCarousel = initCsCarousel(boardCarouselEl, {
+    signal,
+    onChange: (activeIdx) => {
+      const entry = boardMembers[activeIdx];
+      if (!entry) return;
+      if (boardKickerEl) {
+        boardKickerEl.textContent = entry.division;
+      }
+      if (boardTitleEl) {
+        boardTitleEl.textContent = entry.name;
+      }
+    },
+  });
 
   const openBoardDetail = (id: string) => {
-    const profile = BOARD_PROFILES[id];
-    if (!profile) return;
+    const idx = boardMembers.findIndex((m) => m.id === id);
+    if (idx < 0) return;
 
-    if (photoEl) {
-      photoEl.src = profile.photo;
-      photoEl.alt = profile.name;
+    boardCarousel?.resetDetails();
+    boardCarousel?.goTo(idx);
+    if (boardKickerEl) {
+      boardKickerEl.textContent = boardMembers[idx].division;
     }
-    if (badgeEl) badgeEl.textContent = profile.badge;
-    if (divisionEl) divisionEl.textContent = profile.division;
-    if (nameEl) nameEl.textContent = profile.name;
-    if (roleEl) roleEl.textContent = profile.role;
-    if (summaryEl) summaryEl.textContent = profile.summary;
-    if (originEl) originEl.textContent = profile.origin;
-    if (tasksEl) {
-      tasksEl.innerHTML = '';
-      for (const task of profile.tasks) {
-        const li = document.createElement('li');
-        li.textContent = task;
-        tasksEl.appendChild(li);
+    if (boardTitleEl) {
+      boardTitleEl.textContent = boardMembers[idx].name;
+    }
+
+    if (!dialog.open) {
+      dialog.showModal();
+    }
+  };
+
+  const focusAndOpenBoardCard = (card: HTMLElement | null, id: string | undefined) => {
+    if (card) {
+      const visible = getVisibleCards();
+      const visibleIdx = visible.indexOf(card);
+      if (visibleIdx !== -1 && card.dataset.pos !== 'active') {
+        go(visibleIdx);
       }
     }
-
-    dialog.showModal();
+    const targetId = id || card?.dataset.boardId;
+    if (targetId) {
+      openBoardDetail(targetId);
+    }
   };
 
   document.querySelectorAll<HTMLButtonElement>('[data-board-detail]').forEach((btn) => {
-    btn.addEventListener('click', () => {
-      const id = btn.dataset.boardDetail;
-      if (id) openBoardDetail(id);
-    });
+    btn.addEventListener(
+      'click',
+      (e: MouseEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const card = btn.closest<HTMLElement>('[data-board-card]');
+        focusAndOpenBoardCard(card, btn.dataset.boardDetail);
+      },
+      {signal},
+    );
+  });
+
+  cards.forEach((card) => {
+    const canvas = card.querySelector<HTMLElement>('.board-card-canvas');
+    if (!canvas) return;
+    let downX: number | null = null;
+    let downY: number | null = null;
+    canvas.addEventListener(
+      'pointerdown',
+      (e: PointerEvent) => {
+        downX = e.clientX;
+        downY = e.clientY;
+      },
+      {signal},
+    );
+    canvas.addEventListener(
+      'pointercancel',
+      () => {
+        downX = null;
+        downY = null;
+      },
+      {signal},
+    );
+    canvas.addEventListener(
+      'click',
+      (e: MouseEvent) => {
+        if ((e.target as HTMLElement | null)?.closest('button')) return;
+        if (
+          downY !== null &&
+          downX !== null &&
+          (Math.abs(e.clientY - downY) > 18 || Math.abs(e.clientX - downX) > 18)
+        ) {
+          downX = null;
+          downY = null;
+          return;
+        }
+        downX = null;
+        downY = null;
+        e.preventDefault();
+        focusAndOpenBoardCard(card, card.dataset.boardId);
+      },
+      {signal},
+    );
   });
 }
 
+interface CsCarouselController {
+  goTo: (index: number) => void;
+  resetDetails: () => void;
+}
+
+function initCsCarousel(
+  shell: HTMLElement | null,
+  options?: {onChange?: (activeIdx: number, activeCard: HTMLElement) => void; signal?: AbortSignal},
+): CsCarouselController | null {
+  if (!shell) return null;
+
+  const cards = Array.from(shell.querySelectorAll<HTMLElement>('[data-cs-card]'));
+  const parentDialog = shell.closest<HTMLDialogElement>('dialog');
+
+  if (!cards.length) return null;
+
+  const total = cards.length;
+  let active = Math.max(
+    0,
+    cards.findIndex((c) => c.dataset.csPos === 'active'),
+  );
+
+  const resetDetails = () => {
+    shell.querySelectorAll<HTMLButtonElement>('[data-cs-toggle-detail]').forEach((btn) => {
+      btn.setAttribute('aria-expanded', 'false');
+    });
+    shell.querySelectorAll<HTMLElement>('[data-cs-detail]').forEach((drawer) => {
+      drawer.hidden = true;
+    });
+  };
+
+  const render = () => {
+    cards.forEach((card, i) => {
+      if (i === active) {
+        card.dataset.csPos = 'active';
+        card.setAttribute('aria-hidden', 'false');
+      } else {
+        card.dataset.csPos = 'hidden';
+        card.setAttribute('aria-hidden', 'true');
+      }
+    });
+
+    options?.onChange?.(active, cards[active]);
+  };
+
+  const goTo = (index: number) => {
+    const next = ((index % total) + total) % total;
+    if (next !== active) {
+      resetDetails();
+      active = next;
+    }
+    render();
+  };
+
+  shell.querySelectorAll<HTMLButtonElement>('[data-cs-toggle-detail]').forEach((btn) => {
+    btn.addEventListener(
+      'click',
+      (e: MouseEvent) => {
+        e.stopPropagation();
+        const card = btn.closest<HTMLElement>('[data-cs-card]');
+        if (!card || card.dataset.csPos !== 'active') return;
+        const drawer = card.querySelector<HTMLElement>('[data-cs-detail]');
+        if (!drawer) return;
+        const nextExpanded = btn.getAttribute('aria-expanded') !== 'true';
+        btn.setAttribute('aria-expanded', String(nextExpanded));
+        drawer.hidden = !nextExpanded;
+      },
+      {signal: options?.signal},
+    );
+  });
+
+  if (parentDialog) {
+    parentDialog.addEventListener(
+      'cs:reset-open',
+      ((e: CustomEvent<{index?: number}>) => {
+        resetDetails();
+        const requested = typeof e.detail?.index === 'number' ? e.detail.index : 0;
+        goTo(requested);
+      }) as EventListener,
+      {signal: options?.signal},
+    );
+  }
+
+  render();
+  return {goTo, resetDetails};
+}
+
+let kegiatanAbortCtrl: AbortController | null = null;
+
+function setupKegiatanCarousel(): void {
+  kegiatanAbortCtrl?.abort();
+  kegiatanAbortCtrl = new AbortController();
+  const shell = document.querySelector<HTMLElement>('[data-cs-carousel="kegiatan"]');
+  const kickerEl = shell?.querySelector<HTMLElement>('[data-cs-kicker]');
+  const titleEl = shell?.querySelector<HTMLElement>('#kegiatan-title');
+  initCsCarousel(shell, {
+    signal: kegiatanAbortCtrl.signal,
+    onChange: (_idx, activeCard) => {
+      const brandLabel = activeCard.querySelector<HTMLElement>('.cs-card-brand span')?.textContent?.trim();
+      const cardTitle = activeCard.querySelector<HTMLElement>('.cs-card-title')?.textContent?.trim();
+      if (kickerEl && brandLabel) {
+        kickerEl.textContent = brandLabel;
+      }
+      if (titleEl && cardTitle) {
+        titleEl.textContent = cardTitle;
+      }
+    },
+  });
+}
+
+const countUpRafMap = new WeakMap<HTMLElement, number>();
+
+function prepareCountTarget(el: HTMLElement): string {
+  if (el.dataset.countRaw === undefined) {
+    el.dataset.countRaw = (el.textContent ?? '').trim();
+  }
+  return el.dataset.countRaw;
+}
+
+function animateCountUp(elements: HTMLElement[]): void {
+  const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  elements.forEach((el, i) => {
+    const prevRaf = countUpRafMap.get(el);
+    if (prevRaf) {
+      cancelAnimationFrame(prevRaf);
+      countUpRafMap.delete(el);
+    }
+
+    const rawText = prepareCountTarget(el);
+    const match = rawText.match(/^\s*(\d+)(.*)$/);
+    if (!match || reducedMotion) {
+      el.textContent = rawText;
+      return;
+    }
+
+    const target = Number(match[1]);
+    const suffix = match[2] ?? '';
+    if (!Number.isFinite(target) || target <= 1) {
+      el.textContent = rawText;
+      return;
+    }
+
+    const duration = target <= 10 ? 780 : target <= 120 ? 1150 : 1450;
+    const delay = i * 70;
+    let startTime = 0;
+
+    el.textContent = `1${suffix}`;
+
+    const tick = (now: number) => {
+      if (!startTime) startTime = now + delay;
+      if (now < startTime) {
+        countUpRafMap.set(el, requestAnimationFrame(tick));
+        return;
+      }
+
+      const progress = clamp((now - startTime) / duration, 0, 1);
+      const power = target <= 10 ? 3 : 4;
+      const eased = 1 - Math.pow(1 - progress, power);
+      const value = Math.min(target, Math.max(1, Math.round(1 + (target - 1) * eased)));
+      el.textContent = `${value}${suffix}`;
+
+      if (progress < 1) {
+        countUpRafMap.set(el, requestAnimationFrame(tick));
+      } else {
+        el.textContent = rawText;
+        countUpRafMap.delete(el);
+      }
+    };
+
+    countUpRafMap.set(el, requestAnimationFrame(tick));
+  });
+}
+
+let showcaseTeardown: (() => void) | null = null;
+
 function setupEventShowcase(): void {
+  showcaseTeardown?.();
   const stage = document.querySelector<HTMLElement>('[data-showcase]');
   if (!stage) return;
+
+  const ctrl = new AbortController();
+  const {signal} = ctrl;
+  let observer: IntersectionObserver | null = null;
+  let wheelLock = 0;
+
+  showcaseTeardown = () => {
+    ctrl.abort();
+    observer?.disconnect();
+    if (wheelLock) {
+      window.clearTimeout(wheelLock);
+      wheelLock = 0;
+    }
+  };
 
   const cards = Array.from(stage.querySelectorAll<HTMLElement>('[data-showcase-card]'));
   const dots = Array.from(document.querySelectorAll<HTMLButtonElement>('[data-showcase-dot]'));
@@ -3098,9 +4222,30 @@ function setupEventShowcase(): void {
   const total = cards.length;
   if (total === 0) return;
 
+  cards.forEach((card) => {
+    card.querySelectorAll<HTMLElement>('.showcase-metric strong').forEach(prepareCountTarget);
+  });
+
+  const section = stage.closest<HTMLElement>('#event');
   let active = 0;
-  let startX = 0;
-  let tracking = false;
+  let showcaseInView = false;
+  let dragPointerId: number | null = null;
+  let dragStartX = 0;
+  let dragStartY = 0;
+  let dragActive = false;
+  let dragAbandoned = false;
+  let dragUnit = 320;
+  let currentProgress = 0;
+  let dragSamples: Array<{x: number; time: number}> = [];
+  let suppressClickUntil = 0;
+  let wheelAcc = 0;
+
+  const animateActiveMetrics = () => {
+    const activeCard = cards[active];
+    if (!activeCard) return;
+    const nums = Array.from(activeCard.querySelectorAll<HTMLElement>('.showcase-metric strong'));
+    animateCountUp(nums);
+  };
 
   const render = () => {
     cards.forEach((card, index) => {
@@ -3121,47 +4266,301 @@ function setupEventShowcase(): void {
     });
   };
 
-  const go = (nextIndex: number) => {
-    active = ((nextIndex % total) + total) % total;
-    render();
+  const clearDragStyles = () => {
+    cards.forEach((card) => {
+      card.style.transform = '';
+      card.style.opacity = '';
+      card.style.filter = '';
+      card.style.zIndex = '';
+    });
   };
 
-  prevBtn?.addEventListener('click', () => go(active - 1));
-  nextBtn?.addEventListener('click', () => go(active + 1));
+  const applyDragFrame = (progress: number) => {
+    const isMobile = window.innerWidth <= 749;
+    const sideOpacity = isMobile ? 0 : 0.82;
+
+    cards.forEach((card, index) => {
+      let rel = (index - active) % total;
+      if (rel > total / 2) rel -= total;
+      if (rel < -total / 2) rel += total;
+      if (total % 2 === 0 && rel === total / 2 && progress < 0) {
+        rel = -total / 2;
+      }
+
+      const d = clamp(rel - progress, -2, 2);
+      const a = Math.abs(d);
+
+      let xPct: number;
+      let zPx: number;
+      let scale: number;
+      let opacity: number;
+      let blur: number;
+
+      if (a <= 1) {
+        xPct = -50 + d * 44;
+        zPx = -140 * a;
+        scale = 1 - 0.16 * a;
+        opacity = 1 - (1 - sideOpacity) * a;
+        blur = 0.6 * a;
+      } else {
+        const t = a - 1;
+        const edgeX = d < 0 ? -94 : -6;
+        xPct = edgeX + (-50 - edgeX) * t;
+        zPx = -140 - 120 * t;
+        scale = 0.84 - 0.16 * t;
+        opacity = sideOpacity * (1 - t);
+        blur = 0.6 + 0.6 * t;
+      }
+
+      card.style.transform = `translate3d(${xPct.toFixed(2)}%, 0, ${zPx.toFixed(1)}px) scale(${scale.toFixed(4)})`;
+      card.style.opacity = opacity.toFixed(3);
+      card.style.filter = blur > 0.02 ? `blur(${blur.toFixed(2)}px)` : 'none';
+      card.style.zIndex = a < 0.5 ? '4' : a < 1.35 ? '2' : '1';
+    });
+  };
+
+  const go = (nextIndex: number, forceReplay = false) => {
+    const resolved = ((nextIndex % total) + total) % total;
+    const changed = resolved !== active;
+    active = resolved;
+    render();
+    if (changed || forceReplay) {
+      animateActiveMetrics();
+    }
+  };
+
+  if ('IntersectionObserver' in window) {
+    observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (entry.intersectionRatio >= 0.15) {
+            if (!showcaseInView) {
+              showcaseInView = true;
+              animateActiveMetrics();
+            }
+          } else if (!entry.isIntersecting) {
+            showcaseInView = false;
+          }
+        }
+      },
+      {threshold: [0, 0.15]},
+    );
+    observer.observe(stage);
+  } else {
+    showcaseInView = true;
+    animateActiveMetrics();
+  }
+
+  section?.addEventListener(
+    'rw:replay-countup',
+    () => {
+      showcaseInView = true;
+      animateActiveMetrics();
+    },
+    {signal},
+  );
+
+  prevBtn?.addEventListener('click', () => go(active - 1), {signal});
+  nextBtn?.addEventListener('click', () => go(active + 1), {signal});
 
   dots.forEach((dot) => {
-    dot.addEventListener('click', () => {
-      const idx = Number(dot.dataset.showcaseDot);
-      if (!Number.isNaN(idx)) go(idx);
-    });
+    dot.addEventListener(
+      'click',
+      () => {
+        const idx = Number(dot.dataset.showcaseDot);
+        if (!Number.isNaN(idx)) go(idx, true);
+      },
+      {signal},
+    );
   });
 
   cards.forEach((card, index) => {
-    card.addEventListener('click', (e) => {
-      if (card.dataset.pos === 'prev' || card.dataset.pos === 'next') {
-        e.preventDefault();
-        go(index);
+    card.addEventListener(
+      'click',
+      (e) => {
+        if (card.dataset.pos === 'prev' || card.dataset.pos === 'next') {
+          e.preventDefault();
+          go(index);
+        }
+      },
+      {signal},
+    );
+  });
+
+  const endDrag = (e: PointerEvent) => {
+    if (dragPointerId !== e.pointerId) return;
+    dragPointerId = null;
+    if (!dragActive) return;
+
+    dragActive = false;
+    suppressClickUntil = performance.now() + 80;
+
+    try {
+      if (stage.hasPointerCapture(e.pointerId)) {
+        stage.releasePointerCapture(e.pointerId);
       }
-    });
-  });
-
-  stage.addEventListener('pointerdown', (e: PointerEvent) => {
-    if ((e.target as HTMLElement | null)?.closest('button')) return;
-    startX = e.clientX;
-    tracking = true;
-  });
-
-  stage.addEventListener('pointerup', (e: PointerEvent) => {
-    if (!tracking) return;
-    tracking = false;
-    const dx = e.clientX - startX;
-    if (Math.abs(dx) > 42) {
-      go(dx < 0 ? active + 1 : active - 1);
+    } catch {
+      // ignore
     }
-  });
 
-  stage.addEventListener('pointercancel', () => {
-    tracking = false;
+    const first = dragSamples[0];
+    const last = dragSamples[dragSamples.length - 1];
+    const dt = last && first ? Math.max(1, last.time - first.time) : 1;
+    const vx = last && first && last !== first ? (last.x - first.x) / dt : 0;
+    const dx = e.clientX - dragStartX;
+    const projected = currentProgress + (-vx * 140) / dragUnit;
+
+    stage.classList.remove('is-dragging');
+    void stage.offsetWidth;
+    clearDragStyles();
+
+    if (projected > 0.32 || dx < -48 || vx < -0.3) {
+      go(active + 1);
+    } else if (projected < -0.32 || dx > 48 || vx > 0.3) {
+      go(active - 1);
+    } else {
+      go(active);
+    }
+  };
+
+  stage.addEventListener(
+    'pointerdown',
+    (e: PointerEvent) => {
+      if (e.pointerType === 'mouse' && e.button !== 0) return;
+      if ((e.target as HTMLElement | null)?.closest('button, a')) return;
+
+      dragPointerId = e.pointerId;
+      dragStartX = e.clientX;
+      dragStartY = e.clientY;
+      dragActive = false;
+      dragAbandoned = false;
+      currentProgress = 0;
+      const activeCardWidth = cards[active]?.offsetWidth || stage.clientWidth || 720;
+      dragUnit = Math.max(200, activeCardWidth * 0.44);
+      dragSamples = [{x: e.clientX, time: performance.now()}];
+    },
+    {signal},
+  );
+
+  stage.addEventListener(
+    'pointermove',
+    (e: PointerEvent) => {
+      if (dragPointerId !== e.pointerId || dragAbandoned) return;
+      if (e.pointerType === 'mouse' && (e.buttons & 1) === 0) {
+        endDrag(e);
+        return;
+      }
+
+      const dx = e.clientX - dragStartX;
+      const dy = e.clientY - dragStartY;
+
+      if (!dragActive) {
+        if (Math.abs(dy) > 10 && Math.abs(dy) >= Math.abs(dx)) {
+          dragAbandoned = true;
+          dragPointerId = null;
+          return;
+        }
+        if (Math.abs(dx) > 8 && Math.abs(dx) > 1.2 * Math.abs(dy)) {
+          dragActive = true;
+          stage.classList.add('is-dragging');
+          try {
+            stage.setPointerCapture(e.pointerId);
+          } catch {
+            // ignore
+          }
+        } else {
+          return;
+        }
+      }
+
+      dragSamples.push({x: e.clientX, time: performance.now()});
+      if (dragSamples.length > 6) dragSamples.shift();
+
+      const raw = -dx / dragUnit;
+      currentProgress =
+        Math.abs(raw) <= 1 ? raw : Math.sign(raw) * (1 + Math.min(0.35, (Math.abs(raw) - 1) * 0.25));
+      applyDragFrame(currentProgress);
+    },
+    {signal},
+  );
+
+  stage.addEventListener('pointerup', endDrag, {signal});
+  stage.addEventListener('pointercancel', endDrag, {signal});
+
+  stage.addEventListener(
+    'click',
+    (e: MouseEvent) => {
+      if (performance.now() < suppressClickUntil) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+    },
+    {capture: true, signal},
+  );
+
+  stage.addEventListener(
+    'wheel',
+    (e: WheelEvent) => {
+      if (Math.abs(e.deltaX) <= Math.abs(e.deltaY)) return;
+      e.preventDefault();
+      if (wheelLock) return;
+      wheelAcc += e.deltaX;
+      if (Math.abs(wheelAcc) > 45) {
+        go(wheelAcc > 0 ? active + 1 : active - 1);
+        wheelAcc = 0;
+        wheelLock = window.setTimeout(() => {
+          wheelLock = 0;
+          wheelAcc = 0;
+        }, 460);
+      }
+    },
+    {passive: false, signal},
+  );
+
+  stage.addEventListener(
+    'keydown',
+    (e: KeyboardEvent) => {
+      if (e.key === 'ArrowRight') {
+        e.preventDefault();
+        go(active + 1);
+      } else if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        go(active - 1);
+      }
+    },
+    {signal},
+  );
+
+  cards.forEach((card, cardIdx) => {
+    const visual = card.querySelector<HTMLElement>('.showcase-visual');
+    if (visual) {
+      let downX = 0;
+      let downY = 0;
+      visual.addEventListener(
+        'pointerdown',
+        (e: PointerEvent) => {
+          downX = e.clientX;
+          downY = e.clientY;
+        },
+        {signal},
+      );
+      visual.addEventListener(
+        'click',
+        (e: MouseEvent) => {
+          if (card.dataset.pos !== 'active') return;
+          if (Math.abs(e.clientX - downX) > 8 || Math.abs(e.clientY - downY) > 8) return;
+          e.preventDefault();
+          const kegiatanDialog = document.getElementById('kegiatan-dialog') as HTMLDialogElement | null;
+          if (kegiatanDialog) {
+            kegiatanDialog.dispatchEvent(new CustomEvent('cs:reset-open', {detail: {index: cardIdx}}));
+            if (!kegiatanDialog.open) {
+              kegiatanDialog.showModal();
+            }
+          }
+        },
+        {signal},
+      );
+    }
   });
 
   render();
@@ -3172,9 +4571,73 @@ function setupVisiMisi3D(): void {
   if (!frame) return;
 
   const vmDialog = document.getElementById('visi-misi-dialog') as HTMLDialogElement | null;
+  const stackCards = Array.from(frame.querySelectorAll<HTMLElement>('[data-vm-card]'));
   const tabs = Array.from(frame.querySelectorAll<HTMLButtonElement>('[data-vm-tab]'));
   const panels = Array.from(frame.querySelectorAll<HTMLElement>('[data-vm-panel]'));
   const nextBtn = frame.querySelector<HTMLButtonElement>('[data-vm-next-section]');
+
+  let activeCard: 'visi' | 'misi' = 'visi';
+  let animResetTimer = 0;
+
+  const setFrontCard = (target: 'visi' | 'misi', instant = false) => {
+    const changed = target !== activeCard;
+    activeCard = target;
+    frame.dataset.vmActive = target;
+
+    if (animResetTimer) {
+      window.clearTimeout(animResetTimer);
+      animResetTimer = 0;
+    }
+
+    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    stackCards.forEach((card) => {
+      card.removeAttribute('data-vm-anim');
+    });
+
+    if (changed && !instant && !reducedMotion) {
+      void frame.offsetWidth;
+    }
+
+    stackCards.forEach((card) => {
+      const role = card.dataset.vmCard === 'misi' ? 'misi' : 'visi';
+      const isFront = role === target;
+      card.dataset.vmPos = isFront ? 'front' : 'back';
+      card.setAttribute(
+        'aria-label',
+        isFront
+          ? `Kartu ${role === 'visi' ? 'Visi' : 'Misi'} Ikatan`
+          : `Kartu ${role === 'visi' ? 'Visi' : 'Misi'} Ikatan — klik untuk menampilkan ke depan`,
+      );
+      if (changed && !instant && !reducedMotion) {
+        card.dataset.vmAnim = isFront ? 'to-front' : 'to-back';
+      }
+    });
+
+    if (changed && !instant && !reducedMotion) {
+      animResetTimer = window.setTimeout(() => {
+        stackCards.forEach((card) => card.removeAttribute('data-vm-anim'));
+        animResetTimer = 0;
+      }, 390);
+    }
+  };
+
+  stackCards.forEach((card) => {
+    card.addEventListener('click', (e) => {
+      if (card.dataset.vmPos !== 'back') return;
+      if ((e.target as HTMLElement | null)?.closest('button, a')) return;
+      const role = card.dataset.vmCard === 'misi' ? 'misi' : 'visi';
+      setFrontCard(role, false);
+    });
+
+    card.addEventListener('keydown', (e: KeyboardEvent) => {
+      if (card.dataset.vmPos !== 'back') return;
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        const role = card.dataset.vmCard === 'misi' ? 'misi' : 'visi';
+        setFrontCard(role, false);
+      }
+    });
+  });
 
   const activateTab = (key: string) => {
     tabs.forEach((tab) => {
@@ -3191,18 +4654,28 @@ function setupVisiMisi3D(): void {
   };
 
   tabs.forEach((tab) => {
-    tab.addEventListener('click', () => {
+    tab.addEventListener('click', (e) => {
+      e.stopPropagation();
       const key = tab.dataset.vmTab;
       if (key) activateTab(key);
     });
   });
 
-  nextBtn?.addEventListener('click', () => {
+  document.querySelectorAll<HTMLElement>('[data-open-dialog="visi-misi-dialog"]').forEach((trigger) => {
+    trigger.addEventListener('click', () => {
+      setFrontCard('visi', true);
+    });
+  });
+
+  nextBtn?.addEventListener('click', (e) => {
+    e.stopPropagation();
     const hash = nextBtn.dataset.vmNextSection;
     if (!hash) return;
     if (vmDialog?.open) vmDialog.close();
     requestAnimationFrame(() => {
-      document.querySelector<HTMLElement>(hash)?.scrollIntoView({behavior: 'smooth', block: 'start'});
+      const target = document.querySelector<HTMLElement>(hash);
+      target?.scrollIntoView({behavior: 'smooth', block: 'start'});
+      triggerSectionCountUp(target);
     });
   });
 
@@ -3216,7 +4689,7 @@ function setupVisiMisi3D(): void {
   let nextRx = 0;
   let nextRy = 0;
   let nextMx = '50%';
-  let nextMy = '30%';
+  let nextMy = '24%';
 
   const applyTilt = () => {
     rafId = 0;
@@ -3258,12 +4731,1109 @@ function setupVisiMisi3D(): void {
   });
 }
 
-const boardPillCtrl = initSlidingPill(document.querySelector<HTMLElement>('.board-filters'));
-setupSearch();
-setupInfoDialogs();
-setupBoardFilter(boardPillCtrl);
-setupAnchorLinks();
-setupVisiMisi3D();
-setupBoardCards3D();
-setupEventShowcase();
-setupTopNavAndPills();
+function setupMediaViewCursor(): void {
+  if (!window.matchMedia('(any-hover: hover)').matches) return;
+
+  const targets = document.querySelectorAll<HTMLElement>(
+    '.showcase-stage, .showcase-visual, .board-card-canvas',
+  );
+  if (!targets.length) return;
+
+  document.body.classList.add('has-view-cursor');
+
+  const cursor = document.createElement('div');
+  cursor.className = 'view-cursor';
+  cursor.setAttribute('aria-hidden', 'true');
+  cursor.innerHTML =
+    '<span class="view-cursor-in"><span class="view-cursor-label">Lihat</span></span>';
+  document.body.appendChild(cursor);
+  const labelEl = cursor.querySelector<HTMLElement>('.view-cursor-label');
+
+  const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  let targetX = 0;
+  let targetY = 0;
+  let currentX = 0;
+  let currentY = 0;
+  let rafId = 0;
+  let visible = false;
+
+  const setLabel = (text: string) => {
+    if (labelEl && labelEl.textContent !== text) {
+      labelEl.textContent = text;
+    }
+  };
+
+  const step = () => {
+    const lerp = reducedMotion ? 1 : 0.2;
+    currentX += (targetX - currentX) * lerp;
+    currentY += (targetY - currentY) * lerp;
+    cursor.style.transform = `translate3d(${currentX.toFixed(2)}px, ${currentY.toFixed(2)}px, 0)`;
+
+    if (Math.abs(targetX - currentX) < 0.2 && Math.abs(targetY - currentY) < 0.2) {
+      currentX = targetX;
+      currentY = targetY;
+      cursor.style.transform = `translate3d(${currentX.toFixed(2)}px, ${currentY.toFixed(2)}px, 0)`;
+      rafId = 0;
+      return;
+    }
+    rafId = requestAnimationFrame(step);
+  };
+
+  const hide = () => {
+    cursor.classList.remove('is-pressed', 'is-dragging');
+    if (!visible) return;
+    visible = false;
+    cursor.classList.remove('is-on');
+  };
+
+  const updateFromPointer = (e: PointerEvent) => {
+    if (e.pointerType === 'touch' || e.pointerType === 'pen') {
+      hide();
+      return;
+    }
+
+    if (document.querySelector('dialog[open]')) {
+      hide();
+      return;
+    }
+
+    const isShowcaseDragging = Boolean(document.querySelector('.showcase-stage.is-dragging'));
+    const el = e.target instanceof Element ? e.target : null;
+    const isActiveShowcaseVisual = Boolean(
+      el?.closest('.showcase-card[data-pos="active"] .showcase-visual'),
+    );
+    const isBoardPhoto = Boolean(el?.closest('.board-card-canvas') && !el.closest('button'));
+    const isShowcaseStageArea = Boolean(el?.closest('.showcase-stage') && !el.closest('button, a'));
+
+    if (!isShowcaseDragging && !isActiveShowcaseVisual && !isBoardPhoto && !isShowcaseStageArea) {
+      hide();
+      return;
+    }
+
+    if (isShowcaseDragging) {
+      setLabel('Geser');
+      cursor.classList.add('is-dragging');
+      cursor.classList.remove('is-pressed');
+    } else if (isActiveShowcaseVisual || isBoardPhoto) {
+      setLabel('Lihat');
+      cursor.classList.remove('is-dragging');
+    } else {
+      setLabel('Geser');
+      cursor.classList.remove('is-dragging');
+    }
+
+    targetX = e.clientX;
+    targetY = e.clientY;
+
+    if (!visible) {
+      visible = true;
+      currentX = targetX;
+      currentY = targetY;
+      cursor.style.transform = `translate3d(${currentX.toFixed(2)}px, ${currentY.toFixed(2)}px, 0)`;
+      cursor.classList.add('is-on');
+    }
+
+    if (!rafId) {
+      rafId = requestAnimationFrame(step);
+    }
+  };
+
+  document.addEventListener('pointermove', updateFromPointer);
+  document.addEventListener('pointerover', updateFromPointer);
+  document.addEventListener('pointerdown', (e: PointerEvent) => {
+    updateFromPointer(e);
+    if (visible && !document.querySelector('.showcase-stage.is-dragging')) {
+      cursor.classList.add('is-pressed');
+    }
+  });
+  document.addEventListener('pointerup', (e: PointerEvent) => {
+    cursor.classList.remove('is-pressed', 'is-dragging');
+    updateFromPointer(e);
+  });
+  document.addEventListener('pointercancel', () => {
+    cursor.classList.remove('is-pressed', 'is-dragging');
+  });
+  document.addEventListener('pointerleave', hide);
+  window.addEventListener('blur', hide);
+  window.addEventListener('scroll', hide, {passive: true});
+}
+
+let boardSummaryTeardown: (() => void) | null = null;
+
+function setupBoardSummaryCounters(): void {
+  boardSummaryTeardown?.();
+  const strip = document.querySelector<HTMLElement>('.board-summary-strip');
+  if (!strip) return;
+
+  const ctrl = new AbortController();
+  let observer: IntersectionObserver | null = null;
+  boardSummaryTeardown = () => {
+    ctrl.abort();
+    observer?.disconnect();
+  };
+
+  const section = strip.closest<HTMLElement>('#kepengurusan-2027');
+  const counters = Array.from(strip.querySelectorAll<HTMLElement>('.board-summary-num'));
+  if (!counters.length) return;
+
+  counters.forEach((el) => {
+    delete el.dataset.countRaw;
+    prepareCountTarget(el);
+  });
+
+  let inView = false;
+
+  if ('IntersectionObserver' in window) {
+    observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (entry.intersectionRatio >= 0.2) {
+            if (!inView) {
+              inView = true;
+              animateCountUp(counters);
+            }
+          } else if (!entry.isIntersecting) {
+            inView = false;
+          }
+        }
+      },
+      {threshold: [0, 0.2]},
+    );
+    observer.observe(strip);
+  } else {
+    inView = true;
+    animateCountUp(counters);
+  }
+
+  section?.addEventListener(
+    'rw:replay-countup',
+    () => {
+      inView = true;
+      animateCountUp(counters);
+    },
+    {signal: ctrl.signal},
+  );
+}
+
+function syncPortalFromCms(refreshRunway = true): void {
+  renderEventsFromCms();
+  renderBoardFromCms();
+  renderVisiMisiFromCms();
+  setupKegiatanCarousel();
+  setupBoardCards3D();
+  setupEventShowcase();
+  setupBoardSummaryCounters();
+
+  if (refreshRunway) {
+    const runway = document.querySelector<RunwaySection>('runway-section');
+    runway?.refreshFromCms();
+  }
+}
+
+function setupMobileHeaderControls(): void {
+  const header = document.querySelector<HTMLElement>('.site-header');
+  const searchBtn = header?.querySelector<HTMLButtonElement>('[data-mobile-search-toggle]');
+  const menuBtn = header?.querySelector<HTMLButtonElement>('[data-mobile-menu-toggle]');
+  const searchInput = document.getElementById('catalog-search') as HTMLInputElement | null;
+  const resultsEl = document.getElementById('search-results');
+  const navEl = header?.querySelector<HTMLElement>('[data-top-nav]');
+  if (!header || !searchBtn || !menuBtn) return;
+
+  const setSearchOpen = (open: boolean) => {
+    header.classList.toggle('is-mobile-search-open', open);
+    searchBtn.classList.toggle('is-active', open);
+    searchBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
+    searchBtn.setAttribute('aria-label', open ? 'Tutup pencarian' : 'Buka pencarian');
+    if (open) {
+      setMenuOpen(false);
+      requestAnimationFrame(() => searchInput?.focus());
+    } else if (resultsEl) {
+      resultsEl.hidden = true;
+      searchInput?.setAttribute('aria-expanded', 'false');
+    }
+  };
+
+  const setMenuOpen = (open: boolean) => {
+    header.classList.toggle('is-mobile-menu-open', open);
+    menuBtn.classList.toggle('is-active', open);
+    menuBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
+    menuBtn.setAttribute('aria-label', open ? 'Tutup menu navigasi' : 'Buka menu navigasi');
+    if (open) {
+      header.classList.remove('is-mobile-search-open');
+      searchBtn.classList.remove('is-active');
+      searchBtn.setAttribute('aria-expanded', 'false');
+      searchBtn.setAttribute('aria-label', 'Buka pencarian');
+      if (resultsEl) resultsEl.hidden = true;
+    }
+  };
+
+  const closeAll = () => {
+    setSearchOpen(false);
+    setMenuOpen(false);
+  };
+
+  searchBtn.addEventListener('click', () => {
+    setSearchOpen(!header.classList.contains('is-mobile-search-open'));
+  });
+
+  menuBtn.addEventListener('click', () => {
+    setMenuOpen(!header.classList.contains('is-mobile-menu-open'));
+  });
+
+  navEl?.addEventListener('click', (e) => {
+    if ((e.target as HTMLElement | null)?.closest('.top-nav-btn')) {
+      setMenuOpen(false);
+    }
+  });
+
+  resultsEl?.addEventListener('click', (e) => {
+    if ((e.target as HTMLElement | null)?.closest('.search-hit')) {
+      setSearchOpen(false);
+    }
+  });
+
+  document.addEventListener('click', (e) => {
+    const target = e.target as Node | null;
+    if (!target || header.contains(target)) return;
+    if (header.classList.contains('is-mobile-search-open') || header.classList.contains('is-mobile-menu-open')) {
+      closeAll();
+    }
+  });
+
+  window.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      closeAll();
+    }
+  });
+
+  window.addEventListener('resize', () => {
+    if (window.innerWidth > 749) {
+      closeAll();
+    }
+  });
+}
+
+function setupRegistration2027Dialog(): void {
+  const dialog = document.getElementById('pendaftaran-dialog') as HTMLDialogElement | null;
+  if (!dialog) return;
+
+  const modeBtns = Array.from(dialog.querySelectorAll<HTMLButtonElement>('[data-reg-mode]'));
+  const panels = Array.from(dialog.querySelectorAll<HTMLElement>('[data-reg-panel]'));
+  const form = dialog.querySelector<HTMLFormElement>('[data-reg-form]');
+  const pageHeadEl = dialog.querySelector<HTMLElement>('[data-reg-page-head]');
+  const stepperEl = dialog.querySelector<HTMLElement>('[data-reg-stepper]');
+  const stepNodes = Array.from(dialog.querySelectorAll<HTMLButtonElement>('[data-reg-step-jump]'));
+  const stepLines = Array.from(dialog.querySelectorAll<HTMLElement>('[data-reg-line]'));
+  const stepPanes = Array.from(dialog.querySelectorAll<HTMLElement>('[data-reg-step]'));
+  const prevBtn = dialog.querySelector<HTMLButtonElement>('[data-reg-prev]');
+  const nextBtn = dialog.querySelector<HTMLButtonElement>('[data-reg-next]');
+  const submitBtn = dialog.querySelector<HTMLButtonElement>('[data-reg-submit]');
+  const stepCounterEl = dialog.querySelector<HTMLElement>('[data-reg-step-counter]');
+
+  const receiptBox = dialog.querySelector<HTMLElement>('[data-reg-receipt]');
+  const receiptGreetingEl = dialog.querySelector<HTMLElement>('[data-reg-receipt-greeting]');
+  const receiptCodeEl = dialog.querySelector<HTMLElement>('[data-reg-receipt-code]');
+  const receiptSummaryEl = dialog.querySelector<HTMLElement>('[data-reg-receipt-summary]');
+  const copyCodeBtn = dialog.querySelector<HTMLButtonElement>('[data-reg-copy-code]');
+  const resetFormBtn = dialog.querySelector<HTMLButtonElement>('[data-reg-reset-form]');
+  const goStatusBtn = dialog.querySelector<HTMLButtonElement>('[data-reg-go-status]');
+  const errorEl = dialog.querySelector<HTMLElement>('[data-reg-error]');
+
+  const regionSelect = dialog.querySelector<HTMLSelectElement>('#reg-region');
+  const rolePills = Array.from(dialog.querySelectorAll<HTMLLabelElement>('.reg-role-pill'));
+  const roleInputs = Array.from(dialog.querySelectorAll<HTMLInputElement>('input[name="role"]'));
+
+  const achListEl = dialog.querySelector<HTMLElement>('[data-reg-achievements-list]');
+  const addAchBtn = dialog.querySelector<HTMLButtonElement>('[data-reg-add-achievement]');
+  const bioInput = dialog.querySelector<HTMLTextAreaElement>('#reg-bio');
+  const bioCountEl = dialog.querySelector<HTMLElement>('[data-reg-bio-count]');
+
+  const adatInput = dialog.querySelector<HTMLInputElement>('[data-reg-photo-adat-input]');
+  const adatPreview = dialog.querySelector<HTMLImageElement>('[data-reg-photo-adat-preview]');
+  const adatStage = dialog.querySelector<HTMLElement>('[data-reg-photo-adat-stage]');
+  const adatNote = dialog.querySelector<HTMLElement>('[data-reg-photo-adat-note]');
+  const adatBadge = dialog.querySelector<HTMLElement>('[data-reg-photo-adat-badge]');
+  const adatBtnLabel = dialog.querySelector<HTMLElement>('[data-reg-photo-adat-btn-label]');
+  const adatClearBtn = dialog.querySelector<HTMLButtonElement>('[data-reg-photo-adat-clear]');
+
+  const kebesaranInput = dialog.querySelector<HTMLInputElement>('[data-reg-photo-kebesaran-input]');
+  const kebesaranPreview = dialog.querySelector<HTMLImageElement>('[data-reg-photo-kebesaran-preview]');
+  const kebesaranStage = dialog.querySelector<HTMLElement>('[data-reg-photo-kebesaran-stage]');
+  const kebesaranNote = dialog.querySelector<HTMLElement>('[data-reg-photo-kebesaran-note]');
+  const kebesaranBadge = dialog.querySelector<HTMLElement>('[data-reg-photo-kebesaran-badge]');
+  const kebesaranBtnLabel = dialog.querySelector<HTMLElement>('[data-reg-photo-kebesaran-btn-label]');
+  const kebesaranClearBtn = dialog.querySelector<HTMLButtonElement>('[data-reg-photo-kebesaran-clear]');
+
+  const extraInput = dialog.querySelector<HTMLInputElement>('[data-reg-photo-extra-input]');
+  const extraListEl = dialog.querySelector<HTMLElement>('[data-reg-photo-extra-list]');
+
+  const docInput = dialog.querySelector<HTMLInputElement>('[data-reg-doc-input]');
+  const docStage = dialog.querySelector<HTMLElement>('[data-reg-doc-stage]');
+  const docNameEl = dialog.querySelector<HTMLElement>('[data-reg-doc-name]');
+  const docInfoEl = dialog.querySelector<HTMLElement>('[data-reg-doc-info]');
+  const docBadge = dialog.querySelector<HTMLElement>('[data-reg-doc-badge]');
+  const docBtnLabel = dialog.querySelector<HTMLElement>('[data-reg-doc-btn-label]');
+  const docClearBtn = dialog.querySelector<HTMLButtonElement>('[data-reg-doc-clear]');
+
+  const precheckSummaryEl = dialog.querySelector<HTMLElement>('[data-reg-precheck-summary]');
+
+  const lookupForm = dialog.querySelector<HTMLFormElement>('[data-reg-lookup-form]');
+  const lookupInput = dialog.querySelector<HTMLInputElement>('#reg-lookup-input');
+  const lookupResults = dialog.querySelector<HTMLElement>('[data-reg-lookup-results]');
+
+  if (regionSelect && regionSelect.options.length <= 1) {
+    SUMBAR_REGIONS.forEach((region) => {
+      const opt = document.createElement('option');
+      opt.value = region;
+      opt.textContent = region;
+      regionSelect.appendChild(opt);
+    });
+  }
+
+  let currentStep = 1;
+  const TOTAL_STEPS = 4;
+  const MAX_ACHIEVEMENTS = 12;
+  let achievementItems: string[] = [''];
+  let uploadedAdatRef = '';
+  let uploadedKebesaranRef = '';
+  let uploadedExtras: {label: string; ref: string; previewUrl: string}[] = [];
+  let uploadedDoc: {refUrl: string; fileName: string; mimeType: string; size: number} | null = null;
+  let lastCreatedCode = '';
+
+  const showError = (msg: string) => {
+    if (!errorEl) return;
+    errorEl.textContent = msg;
+    errorEl.hidden = !msg;
+    if (msg) {
+      errorEl.scrollIntoView({behavior: 'smooth', block: 'nearest'});
+    }
+  };
+
+  const bindAutoLowercase = (el: HTMLInputElement | HTMLTextAreaElement) => {
+    el.addEventListener('input', (e) => {
+      if ((e as InputEvent).isComposing) return;
+      const lower = el.value.toLowerCase();
+      if (el.value !== lower) {
+        const start = el.selectionStart;
+        const end = el.selectionEnd;
+        el.value = lower;
+        if (start !== null && end !== null) {
+          try {
+            el.setSelectionRange(start, end);
+          } catch {
+            // Some input types (e.g. email) do not expose selectionRange
+          }
+        }
+      }
+    });
+  };
+
+  if (form) {
+    form
+      .querySelectorAll<HTMLInputElement | HTMLTextAreaElement>(
+        'input[type="text"], input[type="email"], textarea',
+      )
+      .forEach((fieldEl) => bindAutoLowercase(fieldEl));
+  }
+
+  const renderAchievementRows = (focusIndex?: number) => {
+    if (!achListEl) return;
+    if (achievementItems.length === 0) achievementItems = [''];
+    achListEl.replaceChildren();
+
+    achievementItems.forEach((val, idx) => {
+      const row = document.createElement('div');
+      row.className = 'reg-ach-row';
+
+      const num = document.createElement('span');
+      num.className = 'reg-ach-num is-tabular';
+      num.textContent = `${idx + 1}.`;
+
+      const inp = document.createElement('input');
+      inp.type = 'text';
+      inp.className = 'reg-ach-input';
+      inp.value = val.toLowerCase();
+      inp.placeholder =
+        idx === 0
+          ? 'Contoh: juara 1 uda duta wisata kab. agam 2026'
+          : `Poin prestasi ke-${idx + 1}...`;
+      inp.setAttribute('aria-label', `Prestasi ke-${idx + 1}`);
+      bindAutoLowercase(inp);
+      inp.addEventListener('input', () => {
+        achievementItems[idx] = inp.value.toLowerCase();
+      });
+      inp.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          if (achievementItems.length < MAX_ACHIEVEMENTS) {
+            achievementItems.push('');
+            renderAchievementRows(achievementItems.length - 1);
+          }
+        }
+      });
+
+      row.append(num, inp);
+
+      if (achievementItems.length > 1 || val.trim().length > 0) {
+        const removeBtn = document.createElement('button');
+        removeBtn.type = 'button';
+        removeBtn.className = 'reg-ach-remove';
+        removeBtn.setAttribute(
+          'aria-label',
+          achievementItems.length > 1 ? `Hapus prestasi ke-${idx + 1}` : 'Kosongkan baris prestasi',
+        );
+        removeBtn.textContent = '×';
+        removeBtn.addEventListener('click', () => {
+          if (achievementItems.length > 1) {
+            achievementItems.splice(idx, 1);
+          } else {
+            achievementItems[0] = '';
+          }
+          renderAchievementRows(Math.min(idx, achievementItems.length - 1));
+        });
+        row.appendChild(removeBtn);
+      }
+
+      achListEl.appendChild(row);
+      if (focusIndex === idx) {
+        window.requestAnimationFrame(() => inp.focus());
+      }
+    });
+
+    if (addAchBtn) {
+      addAchBtn.disabled = achievementItems.length >= MAX_ACHIEVEMENTS;
+    }
+  };
+
+  addAchBtn?.addEventListener('click', () => {
+    if (achievementItems.length >= MAX_ACHIEVEMENTS) return;
+    achievementItems.push('');
+    renderAchievementRows(achievementItems.length - 1);
+  });
+
+  const updateBioCounter = () => {
+    if (!bioInput || !bioCountEl) return;
+    const len = bioInput.value.trim().length;
+    bioCountEl.textContent = `${len} / min. 20 karakter`;
+    bioCountEl.classList.toggle('is-ready', len >= 20);
+  };
+
+  bioInput?.addEventListener('input', updateBioCounter);
+
+  const renderPrecheckSummary = () => {
+    if (!precheckSummaryEl || !form) return;
+    const fd = new FormData(form);
+    const roleLabel = fd.get('role') === 'uni' ? 'Uni (Putri)' : 'Uda (Putra)';
+    const region = String(fd.get('region') || '').trim() || 'Belum dipilih';
+    const fullName = String(fd.get('fullName') || '').trim() || 'Belum diisi';
+    const achCount = achievementItems.map((s) => s.trim()).filter(Boolean).length;
+    const photoCount =
+      (uploadedAdatRef ? 1 : 0) + (uploadedKebesaranRef ? 1 : 0) + uploadedExtras.length;
+    const docLabel = uploadedDoc ? uploadedDoc.fileName : 'Belum diunggah';
+
+    precheckSummaryEl.replaceChildren();
+    const items: [string, string][] = [
+      ['Nama & Utusan', `${fullName} · ${roleLabel} · ${region}`],
+      ['Poin Prestasi', achCount > 0 ? `${achCount} poin tercantum` : 'Tidak ada tambahan poin'],
+      [
+        'Foto Resmi',
+        `${photoCount} foto (${uploadedAdatRef ? 'Adat ✓' : 'Adat ✗'}, ${uploadedKebesaranRef ? 'Kebesaran ✓' : 'Kebesaran ✗'}${uploadedExtras.length ? `, +${uploadedExtras.length}` : ''})`,
+      ],
+      ['Surat Rekomendasi', docLabel],
+    ];
+
+    items.forEach(([labelText, valueText]) => {
+      const box = document.createElement('div');
+      const dt = document.createElement('dt');
+      dt.textContent = labelText;
+      const dd = document.createElement('dd');
+      dd.textContent = valueText;
+      box.append(dt, dd);
+      precheckSummaryEl.appendChild(box);
+    });
+  };
+
+  const renderStepUi = () => {
+    stepPanes.forEach((pane) => {
+      const stepNum = Number(pane.dataset.regStep || 1);
+      pane.hidden = stepNum !== currentStep;
+    });
+
+    stepNodes.forEach((node) => {
+      const stepNum = Number(node.dataset.regStepJump || 1);
+      const isDone = stepNum < currentStep;
+      const isActive = stepNum === currentStep;
+      node.classList.toggle('is-active', isActive);
+      node.classList.toggle('is-done', isDone);
+      if (isActive) node.setAttribute('aria-current', 'step');
+      else node.removeAttribute('aria-current');
+      const circle = node.querySelector<HTMLElement>('.reg-step-circle');
+      if (circle) {
+        circle.textContent = isDone ? '✓' : String(stepNum);
+      }
+    });
+
+    stepLines.forEach((line) => {
+      const lineIdx = Number(line.dataset.regLine || 1);
+      line.classList.toggle('is-done', lineIdx < currentStep);
+    });
+
+    if (prevBtn) prevBtn.disabled = currentStep <= 1;
+    if (nextBtn) nextBtn.hidden = currentStep >= TOTAL_STEPS;
+    if (submitBtn) submitBtn.hidden = currentStep < TOTAL_STEPS;
+    if (stepCounterEl) stepCounterEl.textContent = `Langkah ${currentStep} dari ${TOTAL_STEPS}`;
+
+    if (currentStep === TOTAL_STEPS) {
+      renderPrecheckSummary();
+    }
+  };
+
+  const validateStep = (step: number): string | null => {
+    if (!form) return null;
+    const fd = new FormData(form);
+    if (step === 1) {
+      const region = String(fd.get('region') || '').trim();
+      const fullName = String(fd.get('fullName') || '').trim();
+      const age = String(fd.get('age') || '').trim();
+      const phone = String(fd.get('phone') || '').trim();
+      const email = String(fd.get('email') || '').trim();
+      const education = String(fd.get('education') || '').trim();
+      if (!region) return 'Pilih Kabupaten / Kota utusan daerah Anda.';
+      if (fullName.length < 3) return 'Lengkapi nama lengkap peserta terlebih dahulu.';
+      if (!age || Number(age) < 17 || Number(age) > 27) {
+        return 'Masukkan usia yang valid (17–27 tahun).';
+      }
+      if (phone.length < 9) return 'Masukkan nomor WhatsApp aktif yang dapat dihubungi panitia.';
+      if (!email || !email.includes('@')) return 'Masukkan alamat email aktif yang valid.';
+      if (!education) return 'Isi pendidikan terakhir atau perguruan tinggi.';
+    } else if (step === 2) {
+      const advocacy = String(fd.get('advocacy') || '').trim();
+      const bio = String(fd.get('bio') || '').trim();
+      if (!advocacy) return 'Isi fokus advokasi pariwisata atau budaya Anda.';
+      if (bio.length < 20) return 'Lengkapi biografi singkat minimal 20 karakter.';
+    } else if (step === 3) {
+      if (!uploadedAdatRef) {
+        return 'Unggah Foto 1 menggunakan Baju Adat Daerah terlebih dahulu.';
+      }
+      if (!uploadedKebesaranRef) {
+        return 'Unggah Foto 2 menggunakan Baju Kebesaran Duta Wisata terlebih dahulu.';
+      }
+    } else if (step === 4) {
+      const recNumber = String(fd.get('recNumber') || '').trim();
+      const recIssuer = String(fd.get('recIssuer') || '').trim();
+      const recDate = String(fd.get('recDate') || '').trim();
+      if (!recNumber || !recIssuer || !recDate) {
+        return 'Lengkapi nomor, tanggal, dan instansi penerbit Surat Rekomendasi Kab/Kota.';
+      }
+      if (!uploadedDoc) {
+        return 'Unggah file Surat Rekomendasi resmi dari Kabupaten/Kota (PDF/JPG/PNG).';
+      }
+    }
+    return null;
+  };
+
+  const goToStep = (targetStep: number) => {
+    const nextStep = clamp(targetStep, 1, TOTAL_STEPS);
+    if (nextStep > currentStep) {
+      for (let s = currentStep; s < nextStep; s += 1) {
+        const err = validateStep(s);
+        if (err) {
+          currentStep = s;
+          renderStepUi();
+          showError(err);
+          return;
+        }
+      }
+    }
+    showError('');
+    currentStep = nextStep;
+    renderStepUi();
+  };
+
+  nextBtn?.addEventListener('click', () => goToStep(currentStep + 1));
+  prevBtn?.addEventListener('click', () => goToStep(currentStep - 1));
+  stepNodes.forEach((node) => {
+    node.addEventListener('click', () => {
+      const targetStep = Number(node.dataset.regStepJump || 1);
+      goToStep(targetStep);
+    });
+  });
+
+  const switchMode = (mode: 'form' | 'status') => {
+    modeBtns.forEach((btn) => {
+      const active = btn.dataset.regMode === mode;
+      btn.classList.toggle('is-active', active);
+      btn.setAttribute('aria-selected', active ? 'true' : 'false');
+    });
+    panels.forEach((panel) => {
+      const match = panel.dataset.regPanel === mode;
+      panel.hidden = !match;
+    });
+  };
+
+  modeBtns.forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const mode = btn.dataset.regMode === 'status' ? 'status' : 'form';
+      switchMode(mode);
+    });
+  });
+
+  const getRoleFallbackSvg = () => {
+    const checkedRole = roleInputs.find((inp) => inp.checked)?.value === 'uni' ? 'uni' : 'uda';
+    return checkedRole === 'uni'
+      ? '/assets/placeholders/silhouette-uni.svg'
+      : '/assets/placeholders/silhouette-uda.svg';
+  };
+
+  const syncRoleVisual = () => {
+    const fallbackSrc = getRoleFallbackSvg();
+    rolePills.forEach((pill) => {
+      const inp = pill.querySelector<HTMLInputElement>('input[name="role"]');
+      pill.classList.toggle('is-selected', Boolean(inp?.checked));
+    });
+    if (!uploadedAdatRef && adatPreview) adatPreview.src = fallbackSrc;
+    if (!uploadedKebesaranRef && kebesaranPreview) kebesaranPreview.src = fallbackSrc;
+  };
+
+  roleInputs.forEach((inp) => {
+    inp.addEventListener('change', syncRoleVisual);
+  });
+
+  const bindStageTrigger = (stage: HTMLElement | null, input: HTMLInputElement | null) => {
+    if (!stage || !input) return;
+    stage.addEventListener('click', (e) => {
+      const target = e.target as HTMLElement;
+      if (target.closest('button, label')) return;
+      input.click();
+    });
+    stage.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        input.click();
+      }
+    });
+  };
+
+  bindStageTrigger(adatStage, adatInput);
+  bindStageTrigger(kebesaranStage, kebesaranInput);
+  bindStageTrigger(docStage, docInput);
+
+  const clearAdatPhoto = () => {
+    uploadedAdatRef = '';
+    if (adatInput) adatInput.value = '';
+    if (adatPreview) adatPreview.src = getRoleFallbackSvg();
+    adatStage?.classList.remove('has-file');
+    if (adatNote) adatNote.textContent = 'Klik area ini untuk memilih foto';
+    if (adatBadge) {
+      adatBadge.textContent = 'Wajib';
+      adatBadge.classList.remove('is-done');
+    }
+    if (adatBtnLabel) adatBtnLabel.textContent = 'Pilih Foto Baju Adat';
+    if (adatClearBtn) adatClearBtn.hidden = true;
+  };
+
+  const clearKebesaranPhoto = () => {
+    uploadedKebesaranRef = '';
+    if (kebesaranInput) kebesaranInput.value = '';
+    if (kebesaranPreview) kebesaranPreview.src = getRoleFallbackSvg();
+    kebesaranStage?.classList.remove('has-file');
+    if (kebesaranNote) kebesaranNote.textContent = 'Klik area ini untuk memilih foto';
+    if (kebesaranBadge) {
+      kebesaranBadge.textContent = 'Wajib';
+      kebesaranBadge.classList.remove('is-done');
+    }
+    if (kebesaranBtnLabel) kebesaranBtnLabel.textContent = 'Pilih Foto Baju Kebesaran';
+    if (kebesaranClearBtn) kebesaranClearBtn.hidden = true;
+  };
+
+  const clearDocFile = () => {
+    uploadedDoc = null;
+    if (docInput) docInput.value = '';
+    docStage?.classList.remove('has-file');
+    if (docNameEl) docNameEl.textContent = 'Klik area ini untuk memilih file surat rekomendasi';
+    if (docInfoEl) docInfoEl.textContent = 'Format PDF, JPG, atau PNG · Maksimal 5 MB';
+    if (docBadge) {
+      docBadge.textContent = 'Wajib · PDF/JPG/PNG';
+      docBadge.classList.remove('is-done');
+    }
+    if (docBtnLabel) docBtnLabel.textContent = 'Pilih File Surat';
+    if (docClearBtn) docClearBtn.hidden = true;
+    renderPrecheckSummary();
+  };
+
+  adatClearBtn?.addEventListener('click', clearAdatPhoto);
+  kebesaranClearBtn?.addEventListener('click', clearKebesaranPhoto);
+  docClearBtn?.addEventListener('click', clearDocFile);
+
+  adatInput?.addEventListener('change', async () => {
+    const file = adatInput.files?.[0];
+    if (!file) return;
+    showError('');
+    try {
+      const res = await saveCompressedAdminImage(file, 'portrait');
+      uploadedAdatRef = res.refUrl;
+      if (adatPreview) adatPreview.src = res.objectUrl;
+      adatStage?.classList.add('has-file');
+      if (adatNote) {
+        adatNote.textContent = `${res.width}×${res.height}px · ${formatBytesCompact(res.compressedBytes)}`;
+      }
+      if (adatBadge) {
+        adatBadge.textContent = 'Terunggah';
+        adatBadge.classList.add('is-done');
+      }
+      if (adatBtnLabel) adatBtnLabel.textContent = 'Ganti Foto';
+      if (adatClearBtn) adatClearBtn.hidden = false;
+    } catch (err) {
+      showError(err instanceof Error ? err.message : 'Gagal memproses foto baju adat.');
+    }
+  });
+
+  kebesaranInput?.addEventListener('change', async () => {
+    const file = kebesaranInput.files?.[0];
+    if (!file) return;
+    showError('');
+    try {
+      const res = await saveCompressedAdminImage(file, 'portrait');
+      uploadedKebesaranRef = res.refUrl;
+      if (kebesaranPreview) kebesaranPreview.src = res.objectUrl;
+      kebesaranStage?.classList.add('has-file');
+      if (kebesaranNote) {
+        kebesaranNote.textContent = `${res.width}×${res.height}px · ${formatBytesCompact(res.compressedBytes)}`;
+      }
+      if (kebesaranBadge) {
+        kebesaranBadge.textContent = 'Terunggah';
+        kebesaranBadge.classList.add('is-done');
+      }
+      if (kebesaranBtnLabel) kebesaranBtnLabel.textContent = 'Ganti Foto';
+      if (kebesaranClearBtn) kebesaranClearBtn.hidden = false;
+    } catch (err) {
+      showError(err instanceof Error ? err.message : 'Gagal memproses foto baju kebesaran.');
+    }
+  });
+
+  const renderExtraPhotoThumbs = () => {
+    if (!extraListEl) return;
+    extraListEl.replaceChildren();
+    extraListEl.hidden = uploadedExtras.length === 0;
+    uploadedExtras.forEach((item, idx) => {
+      const chip = document.createElement('div');
+      chip.className = 'reg-extra-chip';
+      const img = document.createElement('img');
+      img.src = item.previewUrl;
+      img.alt = item.label;
+      const meta = document.createElement('span');
+      meta.textContent = item.label;
+      const del = document.createElement('button');
+      del.type = 'button';
+      del.className = 'reg-extra-remove';
+      del.setAttribute('aria-label', `Hapus ${item.label}`);
+      del.textContent = '×';
+      del.addEventListener('click', () => {
+        uploadedExtras = uploadedExtras.filter((_, i) => i !== idx);
+        renderExtraPhotoThumbs();
+      });
+      chip.append(img, meta, del);
+      extraListEl.appendChild(chip);
+    });
+  };
+
+  extraInput?.addEventListener('change', async () => {
+    const files = Array.from(extraInput.files ?? []);
+    if (!files.length) return;
+    showError('');
+    for (const file of files) {
+      try {
+        const res = await saveCompressedAdminImage(file, 'portrait');
+        const label = file.name.replace(/\.[^.]+$/, '').slice(0, 26) || `Foto Tambahan ${uploadedExtras.length + 1}`;
+        uploadedExtras.push({label, ref: res.refUrl, previewUrl: res.objectUrl});
+      } catch (err) {
+        showError(err instanceof Error ? err.message : 'Sebagian foto tambahan gagal diproses.');
+      }
+    }
+    extraInput.value = '';
+    renderExtraPhotoThumbs();
+  });
+
+  docInput?.addEventListener('change', async () => {
+    const file = docInput.files?.[0];
+    if (!file) return;
+    showError('');
+    try {
+      const res = await saveRegistrationDocument(file);
+      uploadedDoc = res;
+      docStage?.classList.add('has-file');
+      if (docNameEl) docNameEl.textContent = res.fileName;
+      if (docInfoEl) {
+        const typeLabel = res.mimeType.includes('pdf') ? 'PDF Resmi' : 'Scan Gambar';
+        docInfoEl.textContent = `${typeLabel} · ${formatBytesCompact(res.size)} · Tersimpan aman`;
+      }
+      if (docBadge) {
+        docBadge.textContent = 'Terunggah';
+        docBadge.classList.add('is-done');
+      }
+      if (docBtnLabel) docBtnLabel.textContent = 'Ganti File';
+      if (docClearBtn) docClearBtn.hidden = false;
+      renderPrecheckSummary();
+    } catch (err) {
+      showError(err instanceof Error ? err.message : 'Gagal mengunggah surat rekomendasi.');
+    }
+  });
+
+  const resetRegistrationState = () => {
+    form?.reset();
+    currentStep = 1;
+    achievementItems = [''];
+    renderAchievementRows();
+    updateBioCounter();
+    uploadedExtras = [];
+    renderExtraPhotoThumbs();
+    clearAdatPhoto();
+    clearKebesaranPhoto();
+    clearDocFile();
+    showError('');
+
+    syncRoleVisual();
+    renderStepUi();
+    if (pageHeadEl) pageHeadEl.hidden = false;
+    if (stepperEl) stepperEl.hidden = false;
+    if (form) form.hidden = false;
+    if (receiptBox) receiptBox.hidden = true;
+  };
+
+  form?.addEventListener('submit', (e) => {
+    e.preventDefault();
+    for (let s = 1; s <= TOTAL_STEPS; s += 1) {
+      const err = validateStep(s);
+      if (err) {
+        currentStep = s;
+        renderStepUi();
+        showError(err);
+        return;
+      }
+    }
+
+    if (!uploadedDoc) return;
+    const fd = new FormData(form);
+    const role: RoleFilter = fd.get('role') === 'uni' ? 'uni' : 'uda';
+    const region = String(fd.get('region') || '').trim();
+    const fullName = String(fd.get('fullName') || '').trim().toLowerCase();
+    const shortName = String(fd.get('shortName') || '').trim().toLowerCase();
+    const age = String(fd.get('age') || '').trim();
+    const phone = String(fd.get('phone') || '').trim().toLowerCase();
+    const email = String(fd.get('email') || '').trim().toLowerCase();
+    const education = String(fd.get('education') || '').trim().toLowerCase();
+    const profession = String(fd.get('profession') || '').trim().toLowerCase();
+    const advocacy = String(fd.get('advocacy') || '').trim().toLowerCase();
+    const achievementsText = achievementItems
+      .map((item) => item.trim().toLowerCase())
+      .filter(Boolean)
+      .join('\n');
+    const bio = String(fd.get('bio') || '').trim().toLowerCase();
+    const recNumber = String(fd.get('recNumber') || '').trim().toLowerCase();
+    const recIssuer = String(fd.get('recIssuer') || '').trim().toLowerCase();
+    const recDate = String(fd.get('recDate') || '').trim();
+
+    showError('');
+    const created = submitRegistration2027({
+      role,
+      region,
+      fullName,
+      shortName: shortName || fullName,
+      age,
+      phone,
+      email,
+      education,
+      profession,
+      advocacy,
+      achievementsText,
+      bio,
+      photoAdatRef: uploadedAdatRef,
+      photoKebesaranRef: uploadedKebesaranRef,
+      extraPhotos: uploadedExtras.map(({label, ref}) => ({label, ref})),
+      recLetterRef: uploadedDoc.refUrl,
+      recLetterName: uploadedDoc.fileName,
+      recLetterMime: uploadedDoc.mimeType,
+      recLetterSize: uploadedDoc.size,
+      recNumber,
+      recIssuer,
+      recDate,
+    });
+
+    lastCreatedCode = created.regCode;
+    if (receiptCodeEl) receiptCodeEl.textContent = created.regCode;
+    if (receiptGreetingEl) {
+      receiptGreetingEl.textContent = `Selamat, ${created.fullName}! Berkas pendaftaran Anda sebagai utusan ${created.region} telah berhasil dikirim dan tercatat di sistem Panitia Pemilihan Uda & Uni Duta Wisata Sumatera Barat 2027.`;
+    }
+    if (receiptSummaryEl) {
+      receiptSummaryEl.replaceChildren();
+      const totalPhotos = 2 + (created.extraPhotos?.length ?? 0);
+      const totalAch = created.achievementsText
+        ? created.achievementsText.split(/\r?\n/).filter((l) => l.trim()).length
+        : 0;
+      const rows: [string, string][] = [
+        ['Nama Peserta', created.fullName],
+        ['Utusan Daerah', `${created.role === 'uda' ? 'Uda' : 'Uni'} · ${created.region}`],
+        ['Foto Resmi', `${totalPhotos} Foto (Baju Adat Daerah, Baju Kebesaran${totalPhotos > 2 ? ' + Tambahan' : ''})`],
+        ['Prestasi & Surat', `${totalAch} Poin Prestasi · Surat ${created.recNumber}`],
+      ];
+      rows.forEach(([dtText, ddText]) => {
+        const wrap = document.createElement('div');
+        const dt = document.createElement('dt');
+        dt.textContent = dtText;
+        const dd = document.createElement('dd');
+        dd.textContent = ddText;
+        wrap.append(dt, dd);
+        receiptSummaryEl.appendChild(wrap);
+      });
+    }
+
+    if (pageHeadEl) pageHeadEl.hidden = true;
+    if (stepperEl) stepperEl.hidden = true;
+    form.hidden = true;
+    if (receiptBox) receiptBox.hidden = false;
+    dialog.scrollTo({top: 0, behavior: 'smooth'});
+  });
+
+  copyCodeBtn?.addEventListener('click', async () => {
+    const code = receiptCodeEl?.textContent?.trim() || lastCreatedCode;
+    if (!code) return;
+    try {
+      await navigator.clipboard.writeText(code);
+      copyCodeBtn.textContent = 'Tersalin!';
+      window.setTimeout(() => {
+        copyCodeBtn.textContent = 'Salin Kode';
+      }, 2200);
+    } catch {
+      copyCodeBtn.textContent = code;
+    }
+  });
+
+  resetFormBtn?.addEventListener('click', resetRegistrationState);
+
+  const renderLookupResults = (query: string) => {
+    if (!lookupResults) return;
+    lookupResults.replaceChildren();
+    const matches: PublicRegistrationStatusView[] = lookupRegistrationStatus(query);
+    if (!matches.length) {
+      const empty = document.createElement('div');
+      empty.className = 'reg-lookup-empty-light';
+      empty.textContent = query.trim()
+        ? `Tidak ditemukan berkas dengan kata kunci "${query.trim()}". Pastikan nomor urut, kode pendaftaran, atau nama sesuai.`
+        : 'Masukkan nomor pendaftaran (misal 001 atau 001-KSL-UDA-2027) untuk memantau hasil verifikasi panitia.';
+      lookupResults.appendChild(empty);
+      return;
+    }
+
+    const statusMeta: Record<RegistrationStatus, {label: string; cls: string}> = {
+      pending: {label: 'Menunggu Verifikasi Panitia', cls: 'is-pending'},
+      revision: {label: 'Perlu Perbaikan Berkas', cls: 'is-revision'},
+      approved: {label: 'Disahkan sebagai Finalis 2027', cls: 'is-approved'},
+      rejected: {label: 'Belum Memenuhi Syarat', cls: 'is-rejected'},
+    };
+
+    matches.forEach((item) => {
+      const meta = statusMeta[item.status];
+      const card = document.createElement('div');
+      card.className = 'reg-status-card-light';
+
+      const head = document.createElement('div');
+      head.className = 'reg-status-head';
+
+      const idWrap = document.createElement('div');
+      const codeBadge = document.createElement('span');
+      codeBadge.className = 'reg-status-code-light is-tabular';
+      codeBadge.textContent = item.regCode;
+      const nameEl = document.createElement('h4');
+      nameEl.textContent = item.fullName;
+      const subEl = document.createElement('p');
+      subEl.textContent = `${item.role === 'uda' ? 'Uda' : 'Uni'} · ${item.region}${
+        item.finalistNumber ? ` · No. Finalis #${item.finalistNumber}` : ''
+      }`;
+      idWrap.append(codeBadge, nameEl, subEl);
+
+      const pill = document.createElement('span');
+      pill.className = `reg-status-pill-light ${meta.cls}`;
+      pill.textContent = meta.label;
+
+      head.append(idWrap, pill);
+
+      const metaRow = document.createElement('div');
+      metaRow.className = 'reg-status-chips-light';
+      const recChip = document.createElement('span');
+      recChip.className = 'reg-mini-chip';
+      recChip.textContent = `Surat Rekomendasi: ${item.recNumber}`;
+      const photoChip = document.createElement('span');
+      photoChip.className = 'reg-mini-chip';
+      photoChip.textContent = `${item.photoCount} Foto Terlampir`;
+      const docChip = document.createElement('span');
+      docChip.className = 'reg-mini-chip';
+      docChip.textContent = item.hasRecLetter ? 'Surat Daerah Lengkap' : 'Surat Belum Lengkap';
+      metaRow.append(recChip, photoChip, docChip);
+
+      const noteBox = document.createElement('div');
+      noteBox.className = 'reg-status-note-light';
+      const noteLabel = document.createElement('strong');
+      noteLabel.textContent = 'Catatan Panitia Verifikasi';
+      const noteText = document.createElement('p');
+      noteText.textContent = item.reviewerNote || 'Berkas sedang dalam peninjauan tim verifikasi.';
+      noteBox.append(noteLabel, noteText);
+
+      card.append(head, metaRow, noteBox);
+      lookupResults.appendChild(card);
+    });
+  };
+
+  goStatusBtn?.addEventListener('click', () => {
+    switchMode('status');
+    if (lookupInput && lastCreatedCode) {
+      lookupInput.value = lastCreatedCode;
+      renderLookupResults(lastCreatedCode);
+    }
+  });
+
+  lookupForm?.addEventListener('submit', (e) => {
+    e.preventDefault();
+    renderLookupResults(lookupInput?.value || '');
+  });
+
+  dialog.addEventListener('cs:reset-open', () => {
+    switchMode('form');
+    if (form && receiptBox && !receiptBox.hidden) {
+      resetRegistrationState();
+    } else {
+      renderStepUi();
+    }
+  });
+
+  subscribeCmsChange(() => {
+    if (dialog.open && lookupInput?.value.trim()) {
+      renderLookupResults(lookupInput.value);
+    }
+  });
+
+  renderAchievementRows();
+  updateBioCounter();
+  renderStepUi();
+}
+
+async function bootstrapPortal(): Promise<void> {
+  registerMediaCacheWorker();
+  setupSearch();
+  setupInfoDialogs();
+  setupAnchorLinks();
+  setupVisiMisi3D();
+  setupRegistration2027Dialog();
+  setupMediaViewCursor();
+  setupTopNavAndPills();
+  setupMobileHeaderControls();
+
+  await hydrateCmsMediaUrls();
+  syncPortalFromCms(true);
+  setupAdminPanel();
+
+  subscribeCmsChange(() => {
+    syncPortalFromCms(true);
+  });
+}
+
+void bootstrapPortal();
